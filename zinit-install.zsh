@@ -193,8 +193,7 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
                     "{nl}– {url}https://github.com/zdharma-continuum/zinit-annex-${(L)namemap[$required]}{rst}" \
                     "{nl}for instructions."
                 (( ${#profiles[@]:#$profile} > 0 )) && \
-                    +zi-log "{nl}Other available profiles are:" \
-"{profile}${(pj:$pro_sep:)${profiles[@]:#$profile}}{rst}."
+                    +zi-log "{nl}Other available profiles are: {profile}${(pj:$pro_sep:)${profiles[@]:#$profile}}{rst}"
 
                 return 1
             fi
@@ -340,10 +339,10 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
 
     if [[ $tpe != tarball ]] {
         if [[ -z $update ]] {
-            .zinit-any-colorify-as-uspl2 "$user" "$plugin"
+            # .zinit-any-colorify-as-uspl2 "$user" "$plugin"
             local pid_hl='{pid}' id_msg_part=" (at label{ehi}:{rst} {id-as}$id_as{rst}{…})"
             (( $+ICE[pack] )) && local infix_m="({b}{ice}pack{apo}''{rst}) "
-            +zi-log "{nl}Downloading $infix_m{pid}$user${user:+/}$plugin{…}${${${id_as:#$user/$plugin}}:+$id_msg_part}"
+            +zi-log "{i} Downloading $infix_m$user${user:+/}$plugin ${${${id_as:#$user/$plugin}}:+$id_msg_part}"
         }
 
         local site
@@ -670,9 +669,9 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
 
         if (( ${+commands[curl]} )); then
             if [[ -n $progress ]]; then
-                command curl --progress-bar -fSL "$url" 2> >(.zinit-single-line >&2) || return 1
+                command curl --fail --location --show-error --progress-bar "$url" 2> >(.zinit-single-line >&2) || return 1
             else
-                command curl -fsSL "$url" || return 1
+                command curl --fail --location --no-progress-bar --show-error --silent "$url" || return 1
             fi
         elif (( ${+commands[wget]} )); then
             command wget ${${progress:--q}:#1} "$url" -O - || return 1
@@ -689,9 +688,9 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
     } else {
         if type curl 2>/dev/null 1>&2; then
             if [[ -n $progress ]]; then
-                command curl --progress-bar -fSL "$url" 2> >(.zinit-single-line >&2) || return 1
+                command curl --fail --location --show-error --progress-bar "$url" 2> >(.zinit-single-line >&2) || return 1
             else
-                command curl -fsSL "$url" || return 1
+                command curl --fail --location --no-progress-bar --show-error --silent "$url" || return 1
             fi
         elif type wget 2>/dev/null 1>&2; then
             command wget ${${progress:--q}:#1} "$url" -O - || return 1
@@ -892,7 +891,7 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
             eval "list+=( \$plugin_dir/$~pat(N) )"
         }
         if [[ ${#list} -eq 0 ]] {
-            +zi-log "{w} ice {ice}compile{apo}''{rst} didn't match any files."
+            +zi-log "{w} ice {ice}compile{apo}''{rst} didn't match any files"
         } else {
             integer retval
             for first in $list; do
@@ -965,16 +964,13 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
     command rm -f ${TMPDIR:-/tmp}/zinit-execs.$$.lst ${TMPDIR:-/tmp}/zinit.installed_comps.$$.lst \
                   ${TMPDIR:-/tmp}/zinit.skipped_comps.$$.lst ${TMPDIR:-/tmp}/zinit.compiled.$$.lst
 
+    local id_msg_part="(id: {id-as}${id_as}{rst})"
     if [[ ! -d $local_dir/$dirname ]]; then
-        local id_msg_part="{…} (at label{ehi}:{rst} {id-as}$id_as{rst})"
-        [[ $update != -u ]] && +zi-log "{nl}{info}Setting up snippet:" \
-                                    "{url}$sname{rst}${ICE[id-as]:+$id_msg_part}"
+        [[ $update != -u ]] && +zi-log "{i} Setting up snippet: {url}$sname{rst}${ICE[id-as]:+ $id_msg_part}"
         command mkdir -p "$local_dir"
     fi
-
     if [[ $update = -u && ${OPTS[opt_-q,--quiet]} != 1 ]]; then
-        local id_msg_part="{…} (identified as{ehi}:{rst} {id-as}$id_as{rst})"
-        +zi-log "{nl}{info2}Updating snippet: {url}$sname{rst}${ICE[id-as]:+$id_msg_part}"
+        +zi-log "{i} Updating snippet: {url}$sname{rst}${ICE[id-as]:+ $id_msg_part}"
     fi
 
     # A flag for the annexes. 0 – no new commits, 1 - run-atpull mode,
@@ -992,7 +988,7 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
             (
                 () { setopt localoptions noautopushd; builtin cd -q "$local_dir"; } || return 4
 
-                (( !OPTS[opt_-q,--quiet] )) && +zi-log "Downloading {apo}\`{url}$sname{apo}\`{rst}${${ICE[svn]+" (with Subversion)"}:-" (with curl, wget, lftp)"}{…}"
+                (( !OPTS[opt_-q,--quiet] )) && +zi-log "{m} Downloading {url}$sname{rst}${${ICE[svn]+" (with Subversion)"}:-" (with curl, wget, lftp)"}"
 
                 if (( ${+ICE[svn]} )) {
                     if [[ $update = -u ]] {
@@ -1030,9 +1026,9 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
                             # The condition is reversed on purpose – to show only
                             # the messages on an actual update
                             if (( OPTS[opt_-q,--quiet] )); then
-                                local id_msg_part="{…} (identified as{ehi}: {id-as}$id_as{rst})"
-                                +zi-log "{nl}{info2}Updating snippet {url}${sname}{rst}${ICE[id-as]:+$id_msg_part}"
-                                +zi-log "Downloading {apo}\`{rst}$sname{apo}\`{rst} (with Subversion){…}"
+                                local id_msg_part="(id: {id-as}${id_as}{rst})"
+                                +zi-log "{i} Updating snippet {url}${sname}{rst}${ICE[id-as]:+ $id_msg_part}"
+                                +zi-log "{m} Downloading {file}$sname{rst} (with Subversion)"
                             fi
                             .zinit-mirror-using-svn "$url" "-u" "$dirname" || return 4
                         }
@@ -1086,7 +1082,7 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
                     local -a matched
                     matched=( $local_dir/$dirname/$filename(DNms-$secs) )
                     if (( ${#matched} )) {
-                        +zi-log "{info}Already up to date.{rst}"
+                        +zi-log "{m} Already up to date.{rst}"
                         # Empty-update return-short path – it also decides the
                         # pull-active flag after the return from this sub-shell
                         (( ${+ICE[run-atpull]} || OPTS[opt_-u,--urge] )) && skip_dl=1 || return 0
@@ -1124,7 +1120,7 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
                         if { ! .zinit-download-file-stdout "$url" 0 1 >! "$dirname/$filename" } {
                             if { ! .zinit-download-file-stdout "$url" 1 1 >! "$dirname/$filename" } {
                                 command rm -f "$dirname/$filename"
-                                +zi-log "{u-warn}ERROR{b-warn}:{rst} Download failed."
+                                +zi-log "{e} Download failed"
                                 return 4
                             }
                         }
@@ -1567,9 +1563,9 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
 
     local -a array=( $(print -rm "*(${MACHTYPE}|${VENDOR}|)*~^*(${parts[1]}|${(L)$(uname)})*" $list[@]) )
     (( ${#array} > 0 )) && list=( ${array[@]} )
-    +zi-log -- "{dbg} filtered ${#filtered} to ${#array} release assets"
+    # +zi-log -- "{dbg} filtered ${#filtered} to ${#array} release assets"
 
-    +zi-log -- "{dbg}${(@pj:\n  - :)list[1,2]}{nl}"
+    # +zi-log -- "{dbg}${(@pj:\n  - :)list[1,2]}{nl}"
     for part in "${parts[@]}"; do
       if (( $#list > 1 )); then
         filtered=( ${(M)list[@]:#(#i)*${~part}*} ) && (( $#filtered > 0 )) && list=( ${filtered[@]} )
@@ -1581,7 +1577,7 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
     if (( $#list > 1 )) { filtered=( ${list[@]:#(#i)*.(sha[[:digit:]]#|asc)} ) && (( $#filtered > 0 )) && list=( ${filtered[@]} ); }
 
     if (( !$#list )); then
-      +zi-log "{nl}{info}[{pre}gh-r{info}] {error}Error{rst}: No GitHub release assets found for {glob}${tag_version}{rst}"
+      # +zi-log "{nl}{info}[{pre}gh-r{info}] {error}Error{rst}: No GitHub release assets found for {glob}${tag_version}{rst}"
       return 1
     fi
     reply+=( "${list[1]}" )
@@ -1624,7 +1620,7 @@ ziextract() {
             ziextract "$file" $opt_move $opt_move2 $opt_norm $opt_nobkp ${${${#files}:#1}:+--nobkp}
             ret_val+=$?
         }
-        # Second, try to find the archive via `file' tool
+        # Second, try to find the archive via 'file' tool
         if (( !${#files} )) {
             local -aU output infiles stage2_processed archives
             infiles=( **/*~(._zinit*|._backup|.git)(|/*)~*/*/*(-.DN) )
@@ -1696,8 +1692,7 @@ ziextract() {
 
     .zinit-extract-wrapper() {
         local file="$1" fun="$2" retval
-        (( !OPTS[opt_-q,--quiet] )) && \
-            +zi-log "{info}[{pre}ziextract{info}]{rst} Unpacking the files from: \`{obj}$file{msg}'{…}{rst}"
+        (( !OPTS[opt_-q,--quiet] )) && +zi-log "{m} Extracting files from {obj}$file{rst}"
         $fun; retval=$?
         if (( retval == 0 )) {
             local -a files
@@ -1708,12 +1703,12 @@ ziextract() {
     }
 
     →zinit-check() { (( ${+commands[$1]} )) || \
-        +zi-log "{info}[{pre}ziextract{info}]{error} Error:{msg} No command {data}$1{msg}, it is required to unpack {file}$2{rst}."
+        +zi-log "{w} No command {cmd}$1{rst}, it is required to unpack {obj}$2{rst}"
     }
 
     case "${${ext:+.$ext}:-$file}" in
         ((#i)*.zip)
-            →zinit-extract() { →zinit-check unzip "$file" || return 1; command unzip -o "$file"; }
+            →zinit-extract() { →zinit-check unzip "$file" || return 1; command unzip -qq -o "$file"; }
             ;;
         ((#i)*.rar)
             →zinit-extract() { →zinit-check unrar "$file" || return 1; command unrar x "$file"; }
@@ -1844,29 +1839,16 @@ ziextract() {
     builtin print -rl -- ${execs[@]} >! ${TMPDIR:-/tmp}/zinit-execs.$$.lst
     if [[ ${#execs} -gt 0 ]] {
         command chmod a+x "${execs[@]}"
-        if (( !OPTS[opt_-q,--quiet] )) {
+        if (( !OPTS[opt_-q,--quiet] )); then
             if (( ${#execs} == 1 )); then
-                    +zi-log "{info}[{pre}ziextract{info}]{rst} Successfully extracted and assigned +x chmod to the file: {obj}${execs[1]}{rst}."
+                +zi-log "{m} Extracted {file}${execs[1]}{rst} and set execuatble permission"
             else
-                local sep="$ZINIT[col-rst],$ZINIT[col-obj] "
-                if (( ${#execs} > 7 )) {
-                    +zi-log "{info}[{pre}ziextract{info}]{rst} Successfully" \
-                        "extracted and marked executable the appropriate files" \
-                        "({obj}${(pj:$sep:)${(@)execs[1,5]:t}},…{rst}) contained" \
-                        "in \`{file}$file{rst}'. All the extracted" \
-                        "{obj}${#execs}{rst} executables are" \
-                        "available in the {msg2}INSTALLED_EXECS{rst}" \
-                        "array."
-                } else {
-                    +zi-log "{info}[{pre}ziextract{info}]{rst} Successfully" \
-                        "extracted and marked {obj}${#execs}{rst} executable the appropriate files" \
-                        "({obj}${(pj:$sep:)${execs[@]:t}}{rst}) contained" \
-                        "in \`{file}$file{rst}'."
-                }
+                local sep="{rst},{file} "
+                +zi-log "{m} Extracted {num}${#execs}{rst} files ({file}${(pj:$sep:)${(@)execs[1,5]:t}}{rst}) and set executable permission"
             fi
-        }
+        fi
     } elif (( warning )) {
-        +zi-log "{info}[{pre}ziextract{info}]{error} Error:{msg} didn't recognize archive type of {obj}${file}{msg} ${ext:+/ {obj2}${ext}{msg} } (no extraction has been done).{rst}"
+        +zi-log "{w} Unrecognized archive type {obj}${file}{rst} ${ext:+/ {obj2}${ext}{rst} }, skipping extraction{rst}"
     }
 
     if (( move | move2 )) {

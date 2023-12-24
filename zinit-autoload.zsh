@@ -1279,13 +1279,13 @@ EOF
     }
     local i
     if (( $#o_yes )) || ( .zinit-prompt "Delete ${(j:, :)@}"); then
-        local -A ICE ICE2
         for i in $@; do
+            typeset -AU ICE ICE2
             local the_id="${${i:#(%|/)*}}" filename is_snippet local_dir
             .zinit-compute-ice "$the_id" "pack" ICE2 local_dir filename is_snippet || return 1
             if [[ "$local_dir" != /* ]]; then
-                +zi-log "{w} No available plugin or snippet with the name '$i'"
-                return 1
+                +zi-log "{w} No available plugin or snippet with the name {b}$i{rst}"
+                continue
             fi
             ICE2[teleid]="${ICE2[teleid]:-${ICE2[id-as]}}"
             local -a files
@@ -1303,10 +1303,10 @@ EOF
                 command rm -rf -- ${(q)${${local_dir:#[/[:space:]]##}:-${TMPDIR:-${TMPDIR:-/tmp}}/abcYZX321}}(N) # delete files
                 command rm -f -- $ZINIT[HOME_DIR]/**/*(-@N) # delete broken symlins
                 builtin unset "ZINIT[STATES__${ICE2[id-as]}]" || builtin unset "ZINIT[STATES__${ICE2[teleid]}]"
-                +zi-log "{m} Uninstalled $i"
+                +zi-log "{m} Uninstalled {b}$i{rst}"
             else
-                +zi-log "{w} No available plugin or snippet with the name '$i'"
-                return 1
+                +zi-log "{w} No available plugin or snippet with the name {b}$i{rst}"
+                continue
             fi
         done
     fi
@@ -2900,8 +2900,7 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
         .zinit-exists-physically "$user" "$plugin" || return $retval
         .zinit-any-colorify-as-uspl2 "$2" "$3"
         (( !OPTS[opt_-q,--quiet] )) && \
-            +zi-log "{msg2}Updating also \`$REPLY{rst}{msg2}'" \
-                "plugin (already updated a snippet of the same name){…}{rst}"
+            +zi-log "{m} Updating {b}$REPLY{rst} plugin (already updated a snippet of the same name)"
     } else {
         .zinit-exists-physically-message "$user" "$plugin" || return 1
     }
@@ -2997,7 +2996,7 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
                 }
             }
             if (( ZINIT[annex-multi-flag:pull-active] <= 1 && !OPTS[opt_-q,--quiet] )) {
-                +zi-log "{info}[{pre}${ice[from]}{info}]{rst} latest version ({version}${version}{rst}) already installed"
+                +zi-log "{m} {b}${id_as}{rst} latest version {version}${version}{rst} currently installed"
             }
         }
 
@@ -3008,7 +3007,7 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
                     (( ZINIT[first-plugin-mark] )) && {
                         ZINIT[first-plugin-mark]=0
                     } || builtin print
-                    builtin print "\rUpdating $REPLY"
+                    +zi-log "{i} Updating ${id_as}"
                 }
 
                 ICE=( "${(kv)ice[@]}" )
@@ -3063,7 +3062,7 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
                               (( ZINIT[first-plugin-mark] )) && {
                                   ZINIT[first-plugin-mark]=0
                               } || builtin print
-                              builtin print "Updating $REPLY"
+                              +zi-log "{i} Updating {b}${id_as}{rst}"
                           }
                       }
                       builtin print $line
@@ -3092,7 +3091,7 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
                           (( ZINIT[first-plugin-mark] )) && {
                               ZINIT[first-plugin-mark]=0
                           } || builtin print
-                          builtin print "\rUpdating $REPLY"
+                        +zi-log "{i} Updating {b}${id_as}{rst}"
                       }
                   } else {
                       ZINIT[annex-multi-flag:pull-active]=0
@@ -3362,7 +3361,7 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
             builtin print "\nStatus for plugin $REPLY"
             ( builtin cd -q "$repo"; command git status )
         else
-            (( !OPTS[opt_-q,--quiet] )) && builtin print "Updating $REPLY" || builtin print -n .
+            (( !OPTS[opt_-q,--quiet] )) && +zi-log "{i} Updating $REPLY" || builtin print -n .
             .zinit-update-or-status update "$user" "$plugin"
             update_rc=$?
             [[ $update_rc -ne 0 ]] && {
@@ -3374,7 +3373,7 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
 
     .zinit-compinit 1 1 &>/dev/null
     if (( !OPTS[opt_-q,--quiet] )) {
-        +zi-log "{msg2}The update took {obj}${SECONDS}{msg2} seconds{rst}"
+        +zi-log "Update took {num}${SECONDS}{rst} seconds"
     }
 
     return "$retval"
