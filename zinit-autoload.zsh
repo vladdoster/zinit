@@ -1398,28 +1398,31 @@ EOF
     }
     local i
     if (( $#o_all && !$#o_clean )); then
-        condition () {
-            if [[ -e "${REPLY:h}"/id-as ]]; then
-                reply+=("$(cat "${REPLY:h}/id-as")")
-            else
-                reply+=("$(cat "${REPLY:A}")")
+        {
+            setopt localoptions xtrace
+            condition () {
+                if [[ -e "${REPLY:h}"/id-as ]]; then
+                    reply+=($(<"${REPLY:h}/id-as"))
+                else
+                    reply+=($(<"${REPLY:A}"))
+                fi
+            }
+            local -a all_installed=("${ZINIT[HOME_DIR]}"/{'plugins','snippets'}/**/\._zinit/teleid(N+condition))
+            if (( $#o_yes )) || ( .zinit-prompt "Delete all plugins and snippets ($#all_installed total)" ); then
+                for i in ${all_installed[@]}; do
+                    zinit delete --yes "${i}"
+                done
+                command rm -d -f -v "${ZINIT[HOME_DIR]}"/**/*(-@N) "${ZINIT[HOME_DIR]}"/{'plugins','snippets'}/*(N/^F)
+                local f rc
+                for f in ${(k)ZINIT[(I)STATES__*~*local/zinit]}; do
+                    builtin unset "ZINIT[${f}]"
+                done
+                +zi-log "{m} Delete completed with return code {num}${rc}{rst}"
             fi
-        }
-        local -a all_installed=("${ZINIT[HOME_DIR]}"/{'plugins','snippets'}/**/\._zinit/teleid(N+condition))
-        if (( $#o_yes )) || ( .zinit-prompt "Delete all plugins and snippets ($#all_installed total)" ); then
-            for i in ${all_installed[@]}; do
-                zinit delete --yes "${i}"
-            done
-            rc=$?
-            command rm -d -f -v "${ZINIT[HOME_DIR]}"/**/*(-@N) "${ZINIT[HOME_DIR]}"/{'plugins','snippets'}/*(N/^F)
-            local f
-            for f in ${(k)ZINIT[(I)STATES__*~*local/zinit]}; do
-                builtin unset "ZINIT[${f}]"
-            done
-            +zi-log "{m} Delete completed with return code {num}${rc}{rst}"
+        } always {
+            setopt NO_xtrace
             return $rc
-        fi
-        return 1
+        }
     fi
     (( !$# )) && {
         +zi-log "{e} Invalid usage: This command requires at least 1 plugin or snippet argument."
