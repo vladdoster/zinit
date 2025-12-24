@@ -293,20 +293,18 @@ gh-clone-build() {
             print "Building with Make..."
             
             # Check if Makefile has install target and PREFIX support
-            local has_install=0 has_prefix=0 makefile_name="Makefile"
+            local has_install=0 has_prefix=0 makefile_name=""
             
             if grep -q "^install:" Makefile 2>/dev/null; then
-                has_install=1
                 makefile_name="Makefile"
             elif grep -q "^install:" makefile 2>/dev/null; then
-                has_install=1
                 makefile_name="makefile"
             elif grep -q "^install:" GNUmakefile 2>/dev/null; then
-                has_install=1
                 makefile_name="GNUmakefile"
             fi
             
-            if (( has_install )); then
+            if [[ -n $makefile_name ]]; then
+                has_install=1
                 if grep -q "PREFIX" "$makefile_name" 2>/dev/null; then
                     has_prefix=1
                 fi
@@ -380,7 +378,7 @@ gh-clone-build() {
                     }
                 fi
 
-                print "Warning: No install target found in Makefile. Built binaries are in: $clone_dir/$repo_name" >&2
+                print "Warning: No install target found in $makefile_name. Built binaries are in: $clone_dir/$repo_name" >&2
                 cleanup_needed=0
             fi
             ;;
