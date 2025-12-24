@@ -193,7 +193,7 @@ EOF
 @test 'gh-clone-build non-existent repo' {
   run gh-clone-build -p "$TEST_INSTALL_DIR" "$TEST_REPO_DIR/non-existent"
   assert $state equals 1
-  assert $output contains 'Error: Failed to clone repository'
+  assert $output contains 'Error: Failed to enter repository directory'
 }
 
 # Test error handling - no build system detected
