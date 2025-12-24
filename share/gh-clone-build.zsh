@@ -1,0 +1,341 @@
+#!/usr/bin/env zsh
+# -*- mode: sh; sh-indentation: 4; indent-tabs-mode: nil; sh-basic-offset: 4; -*-
+# Copyright (c) 2025 Zinit contributors.
+
+# FUNCTION: gh-clone-build [[[
+# Clone a GitHub repository, detect build system (make or cmake), configure,
+# build, and install the project with optional custom prefix.
+#
+# Usage:
+#   gh-clone-build [options] <repository>
+#
+# Options:
+#   -h, --help              Show this help message
+#   -v, --verbose           Enable verbose output
+#   -p, --prefix <path>     Set custom installation prefix (default: /usr/local)
+#
+# Arguments:
+#   repository              GitHub repository in format 'owner/repo' or full URL
+#
+# Examples:
+#   gh-clone-build --prefix ~/.local neovim/neovim
+#   gh-clone-build -v --prefix /opt/tools vim/vim
+#   gh-clone-build https://github.com/tmux/tmux
+#
+gh-clone-build() {
+    builtin emulate -LR zsh
+    setopt extendedglob warncreateglobal typesetsilent noshortloops
+
+    local -a o_help o_verbose o_prefix
+    local repository repo_url repo_name clone_dir build_system prefix_path
+    local -i verbose=0
+
+    # Usage message
+    local -a usage=(
+        'Usage:'
+        '  gh-clone-build [options] <repository>'
+        ''
+        'Options:'
+        '  -h, --help              Show this help message'
+        '  -v, --verbose           Enable verbose output'
+        '  -p, --prefix <path>     Set custom installation prefix (default: /usr/local)'
+        ''
+        'Arguments:'
+        '  repository              GitHub repository in format '\''owner/repo'\'' or full URL'
+        ''
+        'Examples:'
+        '  gh-clone-build --prefix ~/.local neovim/neovim'
+        '  gh-clone-build -v --prefix /opt/tools vim/vim'
+        '  gh-clone-build https://github.com/tmux/tmux'
+    )
+
+    # Parse options using zparseopts
+    zmodload zsh/zutil
+    zparseopts -D -F -K -- \
+        {h,-help}=o_help \
+        {v,-verbose}=o_verbose \
+        {p,-prefix}:=o_prefix \
+    || {
+        print -l -- $usage
+        return 1
+    }
+
+    # Show help if requested
+    if (( $#o_help )); then
+        print -l -- $usage
+        return 0
+    fi
+
+    # Set verbose mode
+    (( $#o_verbose )) && verbose=1
+
+    # Set prefix path
+    if (( $#o_prefix )); then
+        prefix_path="${o_prefix[2]}"
+        # Expand ~ to home directory
+        prefix_path="${prefix_path/#\~/$HOME}"
+    else
+        prefix_path="/usr/local"
+    fi
+
+    # Check if repository argument is provided
+    if (( $# == 0 )); then
+        print "Error: repository argument is required" >&2
+        print -l -- $usage
+        return 1
+    fi
+
+    repository="$1"
+
+    # Normalize repository URL
+    if [[ $repository == https://* ]] || [[ $repository == git@* ]] || [[ $repository == git://* ]]; then
+        repo_url="$repository"
+        # Extract repository name from URL
+        repo_name="${repository:t:r}"
+    elif [[ -d $repository ]]; then
+        # Local directory path
+        repo_url="$repository"
+        repo_name="${repository:t}"
+    elif [[ $repository == */* ]] && [[ $repository != /* ]]; then
+        # Format: owner/repo (GitHub shorthand)
+        repo_url="https://github.com/${repository}.git"
+        repo_name="${repository:t}"
+    else
+        print "Error: Invalid repository format. Use 'owner/repo', full URL, or local path" >&2
+        return 1
+    fi
+
+    (( verbose )) && print "Repository URL: $repo_url"
+    (( verbose )) && print "Repository name: $repo_name"
+    (( verbose )) && print "Installation prefix: $prefix_path"
+
+    # Create temporary directory for cloning
+    clone_dir=$(mktemp -d -t gh-clone-build-XXXXXX)
+    if [[ ! -d $clone_dir ]]; then
+        print "Error: Failed to create temporary directory" >&2
+        return 1
+    fi
+
+    (( verbose )) && print "Clone directory: $clone_dir"
+
+    # Cleanup function
+    local cleanup_needed=1
+    cleanup() {
+        if (( cleanup_needed )) && [[ -d $clone_dir ]]; then
+            (( verbose )) && print "Cleaning up: $clone_dir"
+            rm -rf "$clone_dir"
+        fi
+    }
+    trap cleanup EXIT INT TERM
+
+    # Clone repository
+    print "Cloning repository: $repository"
+    if (( verbose )); then
+        git clone "$repo_url" "$clone_dir/$repo_name"
+    else
+        git clone -q "$repo_url" "$clone_dir/$repo_name" 2>/dev/null
+    fi
+
+    if [[ $? -ne 0 ]]; then
+        print "Error: Failed to clone repository" >&2
+        return 1
+    fi
+
+    # Change to repository directory
+    cd "$clone_dir/$repo_name" || {
+        print "Error: Failed to enter repository directory" >&2
+        return 1
+    }
+
+    print "Detecting build system..."
+
+    # Detect build system
+    if [[ -f CMakeLists.txt ]]; then
+        build_system="cmake"
+        (( verbose )) && print "Detected CMake build system"
+    elif [[ -f Makefile ]] || [[ -f makefile ]] || [[ -f GNUmakefile ]]; then
+        build_system="make"
+        (( verbose )) && print "Detected Make build system"
+    elif [[ -f configure.ac ]] || [[ -f configure.in ]]; then
+        build_system="autotools"
+        (( verbose )) && print "Detected Autotools build system"
+    else
+        print "Error: Could not detect build system (no CMakeLists.txt, Makefile, or configure.ac found)" >&2
+        return 1
+    fi
+
+    # Configure and build based on detected build system
+    case $build_system in
+        cmake)
+            print "Configuring with CMake..."
+            mkdir -p build && cd build || {
+                print "Error: Failed to create build directory" >&2
+                return 1
+            }
+
+            if (( verbose )); then
+                cmake -DCMAKE_INSTALL_PREFIX="$prefix_path" ..
+            else
+                cmake -DCMAKE_INSTALL_PREFIX="$prefix_path" .. >/dev/null 2>&1
+            fi
+
+            if [[ $? -ne 0 ]]; then
+                print "Error: CMake configuration failed" >&2
+                return 1
+            fi
+
+            print "Building with CMake..."
+            if (( verbose )); then
+                cmake --build .
+            else
+                cmake --build . >/dev/null 2>&1
+            fi
+
+            if [[ $? -ne 0 ]]; then
+                print "Error: CMake build failed" >&2
+                return 1
+            fi
+
+            print "Installing to: $prefix_path"
+            if (( verbose )); then
+                cmake --install .
+            else
+                cmake --install . >/dev/null 2>&1
+            fi
+
+            if [[ $? -ne 0 ]]; then
+                print "Error: CMake install failed" >&2
+                return 1
+            fi
+            ;;
+
+        autotools)
+            print "Configuring with Autotools..."
+            
+            # Generate configure script if it doesn't exist
+            if [[ ! -f configure ]]; then
+                if [[ -f autogen.sh ]]; then
+                    (( verbose )) && print "Running autogen.sh..."
+                    if (( verbose )); then
+                        ./autogen.sh
+                    else
+                        ./autogen.sh >/dev/null 2>&1
+                    fi
+                elif command -v autoreconf >/dev/null 2>&1; then
+                    (( verbose )) && print "Running autoreconf..."
+                    if (( verbose )); then
+                        autoreconf -i
+                    else
+                        autoreconf -i >/dev/null 2>&1
+                    fi
+                else
+                    print "Error: configure script not found and cannot generate it" >&2
+                    return 1
+                fi
+            fi
+
+            if (( verbose )); then
+                ./configure --prefix="$prefix_path"
+            else
+                ./configure --prefix="$prefix_path" >/dev/null 2>&1
+            fi
+
+            if [[ $? -ne 0 ]]; then
+                print "Error: configure failed" >&2
+                return 1
+            fi
+
+            print "Building with Make..."
+            if (( verbose )); then
+                make
+            else
+                make >/dev/null 2>&1
+            fi
+
+            if [[ $? -ne 0 ]]; then
+                print "Error: make build failed" >&2
+                return 1
+            fi
+
+            print "Installing to: $prefix_path"
+            if (( verbose )); then
+                make install
+            else
+                make install >/dev/null 2>&1
+            fi
+
+            if [[ $? -ne 0 ]]; then
+                print "Error: make install failed" >&2
+                return 1
+            fi
+            ;;
+
+        make)
+            print "Building with Make..."
+            
+            # Check if Makefile has install target
+            if grep -q "^install:" Makefile 2>/dev/null || grep -q "^install:" makefile 2>/dev/null; then
+                # Try to pass PREFIX if Makefile supports it
+                if grep -q "PREFIX" Makefile 2>/dev/null || grep -q "PREFIX" makefile 2>/dev/null; then
+                    if (( verbose )); then
+                        make PREFIX="$prefix_path"
+                    else
+                        make PREFIX="$prefix_path" >/dev/null 2>&1
+                    fi
+                else
+                    if (( verbose )); then
+                        make
+                    else
+                        make >/dev/null 2>&1
+                    fi
+                fi
+
+                if [[ $? -ne 0 ]]; then
+                    print "Error: make build failed" >&2
+                    return 1
+                fi
+
+                print "Installing to: $prefix_path"
+                if grep -q "PREFIX" Makefile 2>/dev/null || grep -q "PREFIX" makefile 2>/dev/null; then
+                    if (( verbose )); then
+                        make install PREFIX="$prefix_path"
+                    else
+                        make install PREFIX="$prefix_path" >/dev/null 2>&1
+                    fi
+                else
+                    if (( verbose )); then
+                        make install
+                    else
+                        make install >/dev/null 2>&1
+                    fi
+                fi
+
+                if [[ $? -ne 0 ]]; then
+                    print "Error: make install failed" >&2
+                    return 1
+                fi
+            else
+                # No install target, just build
+                if (( verbose )); then
+                    make
+                else
+                    make >/dev/null 2>&1
+                fi
+
+                if [[ $? -ne 0 ]]; then
+                    print "Error: make build failed" >&2
+                    return 1
+                fi
+
+                print "Warning: No install target found in Makefile. Built binaries are in: $clone_dir/$repo_name" >&2
+                cleanup_needed=0
+            fi
+            ;;
+    esac
+
+    print "Successfully completed!"
+    return 0
+}
+# ]]]
+
+# vim: ft=zsh sw=4 ts=4 et foldmarker=[[[,]]] foldmethod=marker
