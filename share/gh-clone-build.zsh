@@ -3,8 +3,8 @@
 # Copyright (c) 2025 Zinit contributors.
 
 # FUNCTION: gh-clone-build [[[
-# Clone a GitHub repository, detect build system (make or cmake), configure,
-# build, and install the project with optional custom prefix.
+# Clone a GitHub repository, detect build system (make, cmake, or autotools),
+# configure, build, and install the project with optional custom prefix.
 #
 # Usage:
 #   gh-clone-build [options] <repository>
@@ -221,16 +221,28 @@ gh-clone-build() {
                 if [[ -f autogen.sh ]]; then
                     (( verbose )) && print "Running autogen.sh..."
                     if (( verbose )); then
-                        ./autogen.sh
+                        ./autogen.sh || {
+                            print "Error: autogen.sh failed" >&2
+                            return 1
+                        }
                     else
-                        ./autogen.sh >/dev/null 2>&1
+                        ./autogen.sh >/dev/null 2>&1 || {
+                            print "Error: autogen.sh failed" >&2
+                            return 1
+                        }
                     fi
                 elif command -v autoreconf >/dev/null 2>&1; then
                     (( verbose )) && print "Running autoreconf..."
                     if (( verbose )); then
-                        autoreconf -i
+                        autoreconf -i || {
+                            print "Error: autoreconf failed" >&2
+                            return 1
+                        }
                     else
-                        autoreconf -i >/dev/null 2>&1
+                        autoreconf -i >/dev/null 2>&1 || {
+                            print "Error: autoreconf failed" >&2
+                            return 1
+                        }
                     fi
                 else
                     print "Error: configure script not found and cannot generate it" >&2
@@ -289,6 +301,9 @@ gh-clone-build() {
             elif grep -q "^install:" makefile 2>/dev/null; then
                 has_install=1
                 makefile_name="makefile"
+            elif grep -q "^install:" GNUmakefile 2>/dev/null; then
+                has_install=1
+                makefile_name="GNUmakefile"
             fi
             
             if (( has_install )); then
