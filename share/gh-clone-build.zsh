@@ -131,14 +131,15 @@ gh-clone-build() {
     # Clone repository
     print "Cloning repository: $repository"
     if (( verbose )); then
-        git clone "$repo_url" "$clone_dir/$repo_name"
+        git clone "$repo_url" "$clone_dir/$repo_name" || {
+            print "Error: Failed to clone repository" >&2
+            return 1
+        }
     else
-        git clone -q "$repo_url" "$clone_dir/$repo_name" 2>/dev/null
-    fi
-
-    if [[ $? -ne 0 ]]; then
-        print "Error: Failed to clone repository" >&2
-        return 1
+        git clone -q "$repo_url" "$clone_dir/$repo_name" 2>/dev/null || {
+            print "Error: Failed to clone repository" >&2
+            return 1
+        }
     fi
 
     # Change to repository directory
@@ -174,38 +175,41 @@ gh-clone-build() {
             }
 
             if (( verbose )); then
-                cmake -DCMAKE_INSTALL_PREFIX="$prefix_path" ..
+                cmake -DCMAKE_INSTALL_PREFIX="$prefix_path" .. || {
+                    print "Error: CMake configuration failed" >&2
+                    return 1
+                }
             else
-                cmake -DCMAKE_INSTALL_PREFIX="$prefix_path" .. >/dev/null 2>&1
-            fi
-
-            if [[ $? -ne 0 ]]; then
-                print "Error: CMake configuration failed" >&2
-                return 1
+                cmake -DCMAKE_INSTALL_PREFIX="$prefix_path" .. >/dev/null 2>&1 || {
+                    print "Error: CMake configuration failed" >&2
+                    return 1
+                }
             fi
 
             print "Building with CMake..."
             if (( verbose )); then
-                cmake --build .
+                cmake --build . || {
+                    print "Error: CMake build failed" >&2
+                    return 1
+                }
             else
-                cmake --build . >/dev/null 2>&1
-            fi
-
-            if [[ $? -ne 0 ]]; then
-                print "Error: CMake build failed" >&2
-                return 1
+                cmake --build . >/dev/null 2>&1 || {
+                    print "Error: CMake build failed" >&2
+                    return 1
+                }
             fi
 
             print "Installing to: $prefix_path"
             if (( verbose )); then
-                cmake --install .
+                cmake --install . || {
+                    print "Error: CMake install failed" >&2
+                    return 1
+                }
             else
-                cmake --install . >/dev/null 2>&1
-            fi
-
-            if [[ $? -ne 0 ]]; then
-                print "Error: CMake install failed" >&2
-                return 1
+                cmake --install . >/dev/null 2>&1 || {
+                    print "Error: CMake install failed" >&2
+                    return 1
+                }
             fi
             ;;
 
@@ -235,96 +239,130 @@ gh-clone-build() {
             fi
 
             if (( verbose )); then
-                ./configure --prefix="$prefix_path"
+                ./configure --prefix="$prefix_path" || {
+                    print "Error: configure failed" >&2
+                    return 1
+                }
             else
-                ./configure --prefix="$prefix_path" >/dev/null 2>&1
-            fi
-
-            if [[ $? -ne 0 ]]; then
-                print "Error: configure failed" >&2
-                return 1
+                ./configure --prefix="$prefix_path" >/dev/null 2>&1 || {
+                    print "Error: configure failed" >&2
+                    return 1
+                }
             fi
 
             print "Building with Make..."
             if (( verbose )); then
-                make
+                make || {
+                    print "Error: make build failed" >&2
+                    return 1
+                }
             else
-                make >/dev/null 2>&1
-            fi
-
-            if [[ $? -ne 0 ]]; then
-                print "Error: make build failed" >&2
-                return 1
+                make >/dev/null 2>&1 || {
+                    print "Error: make build failed" >&2
+                    return 1
+                }
             fi
 
             print "Installing to: $prefix_path"
             if (( verbose )); then
-                make install
+                make install || {
+                    print "Error: make install failed" >&2
+                    return 1
+                }
             else
-                make install >/dev/null 2>&1
-            fi
-
-            if [[ $? -ne 0 ]]; then
-                print "Error: make install failed" >&2
-                return 1
+                make install >/dev/null 2>&1 || {
+                    print "Error: make install failed" >&2
+                    return 1
+                }
             fi
             ;;
 
         make)
             print "Building with Make..."
             
-            # Check if Makefile has install target
-            if grep -q "^install:" Makefile 2>/dev/null || grep -q "^install:" makefile 2>/dev/null; then
-                # Try to pass PREFIX if Makefile supports it
-                if grep -q "PREFIX" Makefile 2>/dev/null || grep -q "PREFIX" makefile 2>/dev/null; then
+            # Check if Makefile has install target and PREFIX support
+            local has_install=0 has_prefix=0 makefile_name="Makefile"
+            
+            if grep -q "^install:" Makefile 2>/dev/null; then
+                has_install=1
+                makefile_name="Makefile"
+            elif grep -q "^install:" makefile 2>/dev/null; then
+                has_install=1
+                makefile_name="makefile"
+            fi
+            
+            if (( has_install )); then
+                if grep -q "PREFIX" "$makefile_name" 2>/dev/null; then
+                    has_prefix=1
+                fi
+            fi
+            
+            if (( has_install )); then
+                # Build with optional PREFIX
+                if (( has_prefix )); then
                     if (( verbose )); then
-                        make PREFIX="$prefix_path"
+                        make PREFIX="$prefix_path" || {
+                            print "Error: make build failed" >&2
+                            return 1
+                        }
                     else
-                        make PREFIX="$prefix_path" >/dev/null 2>&1
+                        make PREFIX="$prefix_path" >/dev/null 2>&1 || {
+                            print "Error: make build failed" >&2
+                            return 1
+                        }
                     fi
                 else
                     if (( verbose )); then
-                        make
+                        make || {
+                            print "Error: make build failed" >&2
+                            return 1
+                        }
                     else
-                        make >/dev/null 2>&1
+                        make >/dev/null 2>&1 || {
+                            print "Error: make build failed" >&2
+                            return 1
+                        }
                     fi
-                fi
-
-                if [[ $? -ne 0 ]]; then
-                    print "Error: make build failed" >&2
-                    return 1
                 fi
 
                 print "Installing to: $prefix_path"
-                if grep -q "PREFIX" Makefile 2>/dev/null || grep -q "PREFIX" makefile 2>/dev/null; then
+                if (( has_prefix )); then
                     if (( verbose )); then
-                        make install PREFIX="$prefix_path"
+                        make install PREFIX="$prefix_path" || {
+                            print "Error: make install failed" >&2
+                            return 1
+                        }
                     else
-                        make install PREFIX="$prefix_path" >/dev/null 2>&1
+                        make install PREFIX="$prefix_path" >/dev/null 2>&1 || {
+                            print "Error: make install failed" >&2
+                            return 1
+                        }
                     fi
                 else
                     if (( verbose )); then
-                        make install
+                        make install || {
+                            print "Error: make install failed" >&2
+                            return 1
+                        }
                     else
-                        make install >/dev/null 2>&1
+                        make install >/dev/null 2>&1 || {
+                            print "Error: make install failed" >&2
+                            return 1
+                        }
                     fi
-                fi
-
-                if [[ $? -ne 0 ]]; then
-                    print "Error: make install failed" >&2
-                    return 1
                 fi
             else
                 # No install target, just build
                 if (( verbose )); then
-                    make
+                    make || {
+                        print "Error: make build failed" >&2
+                        return 1
+                    }
                 else
-                    make >/dev/null 2>&1
-                fi
-
-                if [[ $? -ne 0 ]]; then
-                    print "Error: make build failed" >&2
-                    return 1
+                    make >/dev/null 2>&1 || {
+                        print "Error: make build failed" >&2
+                        return 1
+                    }
                 fi
 
                 print "Warning: No install target found in Makefile. Built binaries are in: $clone_dir/$repo_name" >&2
