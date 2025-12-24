@@ -85,17 +85,31 @@ gh-clone-build() {
         return 1
     fi
 
-    repository="$1"
 
+    # Create temporary directory for cloning
+    clone_dir=$(mktemp -d -t gh-clone-build-XXXXXX)
+    if [[ ! -d $clone_dir ]]; then
+        print "Error: Failed to create temporary directory" >&2
+        return 1
+    fi
+
+    repository="$1"
+    local local_repo_path
     # Normalize repository URL
     if [[ $repository == https://* ]] || [[ $repository == git@* ]] || [[ $repository == git://* ]]; then
         repo_url="$repository"
         # Extract repository name from URL
         repo_name="${repository:t:r}"
-    elif [[ -d $repository ]]; then
-        # Local directory path
-        repo_url="$repository"
-        repo_name="${repository:t}"
+    elif [[ -d ${repository:h} ]]; then
+         # Change to repository directory
+         local_repo_path=1
+         cd "$clone_dir/$repo_name" || {
+             print "Error: Failed to enter repository directory" >&2
+             return 1
+          }
+          # Local directory path
+          repo_url="$repository"
+          repo_name="${repository:t}"
     elif [[ $repository == */* ]] && [[ $repository != /* ]]; then
         # Format: owner/repo (GitHub shorthand)
         repo_url="https://github.com/${repository}.git"
@@ -109,13 +123,6 @@ gh-clone-build() {
     (( verbose )) && print "Repository name: $repo_name"
     (( verbose )) && print "Installation prefix: $prefix_path"
 
-    # Create temporary directory for cloning
-    clone_dir=$(mktemp -d -t gh-clone-build-XXXXXX)
-    if [[ ! -d $clone_dir ]]; then
-        print "Error: Failed to create temporary directory" >&2
-        return 1
-    fi
-
     (( verbose )) && print "Clone directory: $clone_dir"
 
     # Cleanup function
@@ -127,25 +134,26 @@ gh-clone-build() {
         fi
     }
     trap cleanup EXIT INT TERM
+    (( local_repo_path )) || {
+      # Clone repository
+      print "Cloning repository: $repository"
+      if (( verbose )); then
+          git clone "$repo_url" "$clone_dir/$repo_name" || {
+              print "Error: Failed to clone repository" >&2
+              return 1
+          }
+      else
+          git clone -q "$repo_url" "$clone_dir/$repo_name" 2>/dev/null || {
+              print "Error: Failed to clone repository" >&2
+              return 1
+          }
+      fi
 
-    # Clone repository
-    print "Cloning repository: $repository"
-    if (( verbose )); then
-        git clone "$repo_url" "$clone_dir/$repo_name" || {
-            print "Error: Failed to clone repository" >&2
-            return 1
-        }
-    else
-        git clone -q "$repo_url" "$clone_dir/$repo_name" 2>/dev/null || {
-            print "Error: Failed to clone repository" >&2
-            return 1
-        }
-    fi
-
-    # Change to repository directory
-    cd "$clone_dir/$repo_name" || {
-        print "Error: Failed to enter repository directory" >&2
-        return 1
+      # Change to repository directory
+      cd "$clone_dir/$repo_name" || {
+          print "Error: Failed to enter repository directory" >&2
+          return 1
+      }
     }
 
     print "Detecting build system..."
