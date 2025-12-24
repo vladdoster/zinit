@@ -33,6 +33,7 @@ jobs:
           - annexes
           - commands
           - compile
+          - gh-clone-build
           - gh-r
           - ices
           - plugins
