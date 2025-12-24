@@ -100,10 +100,10 @@ gh-clone-build() {
         repo_url="$repository"
         # Extract repository name from URL
         repo_name="${repository:t:r}"
-    elif [[ -d ${repository:h} ]]; then
+    elif [[ -d ${repository:A:h} ]]; then
          # Change to repository directory
          local_repo_path=1
-         cd "$repository" || {
+         cd "${repository:A}" || {
              print "Error: Failed to enter repository directory" >&2
              return 1
           }
