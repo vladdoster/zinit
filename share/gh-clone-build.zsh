@@ -94,7 +94,7 @@ gh-clone-build() {
     fi
 
     repository="$1"
-    local local_repo_path
+    local -i local_repo_path=0
     # Normalize repository URL
     if [[ $repository == https://* ]] || [[ $repository == git@* ]] || [[ $repository == git://* ]]; then
         repo_url="$repository"
@@ -103,7 +103,7 @@ gh-clone-build() {
     elif [[ -d ${repository:h} ]]; then
          # Change to repository directory
          local_repo_path=1
-         cd "$clone_dir/$repo_name" || {
+         cd "$repository" || {
              print "Error: Failed to enter repository directory" >&2
              return 1
           }
@@ -134,7 +134,7 @@ gh-clone-build() {
         fi
     }
     trap cleanup EXIT INT TERM
-    (( local_repo_path )) || {
+    if (( local_repo_path == 0 )); then
       # Clone repository
       print "Cloning repository: $repository"
       if (( verbose )); then
@@ -154,7 +154,7 @@ gh-clone-build() {
           print "Error: Failed to enter repository directory" >&2
           return 1
       }
-    }
+    fi
 
     print "Detecting build system..."
 
