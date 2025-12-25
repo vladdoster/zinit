@@ -84,6 +84,16 @@
   # Verify installation
   assert "$TEST_INSTALL_DIR/bin/test-app" exists
 }
+# Test Make zsh project detection and build
+@test 'gh-clone-build zsh project' {
+  run gh-clone-build -p "$TEST_INSTALL_DIR" "zsh-users/zsh"
+  assert $state equals 0
+  assert $output contains 'Detecting build system...'
+  assert $output contains 'Successfully completed!'
+  
+  # Verify installation
+  assert "$TEST_INSTALL_DIR/bin/zsh" exists
+}
 
 # Test Make project with verbose flag
 @test 'gh-clone-build Make project verbose' {
