@@ -250,7 +250,7 @@ gh-clone-build() {
                 print "Error: configure failed" >&2
                 return 1
             }
-            ;;&
+            ;|
 
         make)
             print "Building with Make..."
