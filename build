@@ -22,11 +22,8 @@ __build_error() {
     print -r -- "ERROR: $@" >&2
 }
 
-# General logging function using zparseopts
+# General logging function
 +log() {
-    # Load zsh/zutil for zparseopts
-    zmodload zsh/zutil
-    
     local log_type="${1:-log}"
     shift
     
