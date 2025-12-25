@@ -158,7 +158,7 @@ gh-clone-build() {
     if [[ -f CMakeLists.txt ]]; then
         build_system="cmake"
         (( verbose )) && print "Detected CMake build system"
-    elif [[ ( -f configure.(in|ac) || -f configure ) ]] && [[ -n *((#s)|/)test((#e)|/)*(#qN) ]]; then
+    elif [[ ( -f configure.(in|ac) || -f configure ) ]] && [[ -z Makefile*(#qN) ]]; then
         build_system="autotools"
         (( verbose )) && print "Detected Autotools build system"
     elif [[ -n Makefile*(#qN) ]]; then
