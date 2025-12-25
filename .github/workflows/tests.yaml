@@ -30,13 +30,7 @@ jobs:
       matrix:
         os: [macos-latest, ubuntu-latest]
         zunit_test:
-          - annexes
-          - commands
-          - compile
-          - gh-r
-          - ices
-          - plugins
-          - snippets
+          - build
 
     steps:
       - name: checkout ${{ github.repository }}

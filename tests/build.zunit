@@ -1,0 +1,265 @@
+#!/usr/bin/env zunit
+# vim:ft=zsh:sw=4:sts=4:et:foldmarker={,}:foldmethod=marker
+#
+# zdharma-continuum/zinit/tests/build.zunit
+# Copyright (c) 2024 zdharma-continuum
+# Homepage: https://github.com/zdharma-continuum/zinit
+# License: MIT License
+#
+
+@setup {
+  # Set up the path to the build script
+  BUILD_SCRIPT="${PWD}/build"
+}
+
+@test 'build --help' {
+  run zsh "$BUILD_SCRIPT" --help
+  assert $output contains 'Usage: build'
+  assert $output contains '--verbose'
+  assert $output contains 'make'
+  assert $output contains 'configure'
+  assert $output contains 'load-cmp'
+  assert $state equals 0
+}
+
+@test 'build -h' {
+  run zsh "$BUILD_SCRIPT" -h
+  assert $output contains 'Usage: build'
+  assert $state equals 0
+}
+
+@test 'build with no subcommands' {
+  run zsh "$BUILD_SCRIPT"
+  assert $output contains 'Build command executed with no subcommands'
+  assert $state equals 0
+}
+
+@test 'build with verbose flag' {
+  run zsh "$BUILD_SCRIPT" -v
+  assert $output contains '[VERBOSE] Verbose mode enabled'
+  assert $output contains 'Build command executed with no subcommands'
+  assert $state equals 0
+}
+
+@test 'build with --verbose flag' {
+  run zsh "$BUILD_SCRIPT" --verbose
+  assert $output contains '[VERBOSE] Verbose mode enabled'
+  assert $state equals 0
+}
+
+@test 'build make' {
+  run zsh "$BUILD_SCRIPT" make
+  assert $output contains 'Running make with default target'
+  assert $state equals 0
+}
+
+@test 'build make --help' {
+  run zsh "$BUILD_SCRIPT" make --help
+  assert $output contains 'Usage: build make'
+  assert $output contains '--target'
+  assert $state equals 0
+}
+
+@test 'build make -h' {
+  run zsh "$BUILD_SCRIPT" make -h
+  assert $output contains 'Usage: build make'
+  assert $state equals 0
+}
+
+@test 'build make --target' {
+  run zsh "$BUILD_SCRIPT" make --target mytarget
+  assert $output contains 'Running make with target: mytarget'
+  assert $state equals 0
+}
+
+@test 'build configure' {
+  run zsh "$BUILD_SCRIPT" configure
+  assert $output contains 'Running configure with no arguments'
+  assert $state equals 0
+}
+
+@test 'build configure --help' {
+  run zsh "$BUILD_SCRIPT" configure --help
+  assert $output contains 'Usage: build configure'
+  assert $state equals 0
+}
+
+@test 'build configure -h' {
+  run zsh "$BUILD_SCRIPT" configure -h
+  assert $output contains 'Usage: build configure'
+  assert $state equals 0
+}
+
+@test 'build configure with arguments' {
+  run zsh "$BUILD_SCRIPT" configure --prefix=/usr --enable-debug
+  assert $output contains 'Running configure with arguments: --prefix=/usr --enable-debug'
+  assert $state equals 0
+}
+
+@test 'build make and configure' {
+  run zsh "$BUILD_SCRIPT" make configure
+  assert $output contains 'Running make with default target'
+  assert $output contains 'Running configure with no arguments'
+  assert $state equals 0
+}
+
+@test 'build configure and make' {
+  run zsh "$BUILD_SCRIPT" configure make
+  assert $output contains 'Running configure with no arguments'
+  assert $output contains 'Running make with default target'
+  assert $state equals 0
+}
+
+@test 'build make with target and configure with arguments' {
+  run zsh "$BUILD_SCRIPT" make --target release configure --prefix=/usr
+  assert $output contains 'Running make with target: release'
+  assert $output contains 'Running configure with arguments: --prefix=/usr'
+  assert $state equals 0
+}
+
+@test 'build verbose make and configure' {
+  run zsh "$BUILD_SCRIPT" -v make --target debug configure --enable-debug
+  assert $output contains '[VERBOSE] Verbose mode enabled'
+  assert $output contains '[VERBOSE] Executing make subcommand'
+  assert $output contains '[VERBOSE] Target: debug'
+  assert $output contains 'Running make with target: debug'
+  assert $output contains '[VERBOSE] Executing configure subcommand'
+  assert $output contains 'Running configure with arguments: --enable-debug'
+  assert $state equals 0
+}
+
+@test 'build invalid subcommand' {
+  run zsh "$BUILD_SCRIPT" invalid-command
+  assert $output contains 'ERROR: Unknown subcommand: invalid-command'
+  assert $state equals 1
+}
+
+@test 'build load-cmp --help' {
+  run zsh "$BUILD_SCRIPT" load-cmp --help
+  assert $output contains 'Usage: build load-cmp'
+  assert $output contains 'directory'
+  assert $output contains '#compdef'
+  assert $state equals 0
+}
+
+@test 'build load-cmp -h' {
+  run zsh "$BUILD_SCRIPT" load-cmp -h
+  assert $output contains 'Usage: build load-cmp'
+  assert $state equals 0
+}
+
+@test 'build load-cmp with no arguments' {
+  run zsh "$BUILD_SCRIPT" load-cmp
+  assert $output contains 'ERROR: load-cmp requires a directory path argument'
+  assert $state equals 1
+}
+
+@test 'build load-cmp with non-existent directory' {
+  run zsh "$BUILD_SCRIPT" load-cmp /nonexistent/test/directory
+  assert $output contains 'ERROR: Directory not found'
+  assert $state equals 1
+}
+
+@test 'build load-cmp with test directory' {
+  # Create test directory with completion files
+  local test_dir="${PWD}/tests/_output/test_completions"
+  mkdir -p "$test_dir"
+  echo '#compdef test1' > "$test_dir/_test1"
+  echo '#compdef test2' > "$test_dir/_test2"
+  echo '#!/bin/zsh' > "$test_dir/_not_completion"
+  
+  run zsh "$BUILD_SCRIPT" load-cmp "$test_dir"
+  assert $output contains 'Found 2 completion file(s)'
+  assert $output contains '_test1'
+  assert $output contains '_test2'
+  assert $state equals 0
+  
+  # Cleanup
+  rm -rf "$test_dir"
+}
+
+@test 'build load-cmp with empty directory' {
+  local test_dir="${PWD}/tests/_output/empty_completions"
+  mkdir -p "$test_dir"
+  
+  run zsh "$BUILD_SCRIPT" load-cmp "$test_dir"
+  assert $output contains 'No completion files found'
+  assert $state equals 0
+  
+  # Cleanup
+  rm -rf "$test_dir"
+}
+
+@test 'build verbose load-cmp' {
+  local test_dir="${PWD}/tests/_output/verbose_test_completions"
+  mkdir -p "$test_dir"
+  echo '#compdef test1' > "$test_dir/_test1"
+  
+  run zsh "$BUILD_SCRIPT" -v load-cmp "$test_dir"
+  assert $output contains '[VERBOSE] Verbose mode enabled'
+  assert $output contains '[VERBOSE] Executing load-cmp subcommand'
+  assert $output contains '[VERBOSE] Searching directory'
+  assert $output contains 'Found 1 completion file(s)'
+  assert $state equals 0
+  
+  # Cleanup
+  rm -rf "$test_dir"
+}
+
+@test 'build make and load-cmp' {
+  local test_dir="${PWD}/tests/_output/make_loadcmp_test"
+  mkdir -p "$test_dir"
+  echo '#compdef test1' > "$test_dir/_test1"
+  
+  run zsh "$BUILD_SCRIPT" make load-cmp "$test_dir"
+  assert $output contains 'Running make with default target'
+  assert $output contains 'Found 1 completion file(s)'
+  assert $state equals 0
+  
+  # Cleanup
+  rm -rf "$test_dir"
+}
+
+@test 'build load-cmp and configure' {
+  local test_dir="${PWD}/tests/_output/loadcmp_configure_test"
+  mkdir -p "$test_dir"
+  echo '#compdef test1' > "$test_dir/_test1"
+  
+  run zsh "$BUILD_SCRIPT" load-cmp "$test_dir" configure --prefix=/usr
+  assert $output contains 'Found 1 completion file(s)'
+  assert $output contains 'Running configure with arguments: --prefix=/usr'
+  assert $state equals 0
+  
+  # Cleanup
+  rm -rf "$test_dir"
+}
+
+@test '+log error message' {
+  run zsh -c "source '$BUILD_SCRIPT'; +log error 'Test error message'"
+  assert $output contains 'ERROR: Test error message'
+  assert $state equals 0
+}
+
+@test '+log debug message' {
+  run zsh -c "source '$BUILD_SCRIPT'; +log debug 'Test debug message'"
+  assert $output contains 'DEBUG: Test debug message'
+  assert $state equals 0
+}
+
+@test '+log regular message' {
+  run zsh -c "source '$BUILD_SCRIPT'; +log 'Test regular message'"
+  assert $output contains 'LOG: Test regular message'
+  assert $state equals 0
+}
+
+@test '+log with multiple arguments' {
+  run zsh -c "source '$BUILD_SCRIPT'; +log error 'Multiple' 'arguments' 'test'"
+  assert $output contains 'ERROR: Multiple arguments test'
+  assert $state equals 0
+}
+
+@test '+log with custom level' {
+  run zsh -c "source '$BUILD_SCRIPT'; +log info 'Custom level message'"
+  assert $output contains 'LOG: info Custom level message'
+  assert $state equals 0
+}
