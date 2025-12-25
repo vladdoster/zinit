@@ -31,6 +31,7 @@
   git config --global user.email "test@example.com" 2>/dev/null || true
   git config --global user.name "Test User" 2>/dev/null || true
   typeset -gx ZBIN="$zi_test_dir/polaris/bin"
+  [[ ! -d $ZBIN ]] && mkdir -p "$ZBIN"
   typeset -gx zpfx="$zi_test_dir/polaris"
   print "> setup | ZPFX=$ZPFX zpfx=$zpfx"
 }
