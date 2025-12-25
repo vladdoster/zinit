@@ -56,8 +56,7 @@ __build_configure_usage() {
 
 # Process make subcommand
 __build_make() {
-    local -a args target help
-    args=("$@")
+    local -a target help
     
     # Load zsh/zutil for zparseopts
     zmodload zsh/zutil
