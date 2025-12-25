@@ -27,8 +27,8 @@ gh-clone-build() {
     setopt extendedglob warncreateglobal typesetsilent noshortloops
 
     local -a o_help o_verbose o_prefix
-    local repository repo_url repo_name clone_dir build_system prefix_path verbose_output='>/dev/null 2>&1'
-    local -i verbose=0
+    local repository repo_url repo_name clone_dir build_system prefix_path verbose_output
+    local -i verbose=1
 
     # Usage message
     local -a usage=(
@@ -67,9 +67,9 @@ gh-clone-build() {
     fi
 
     # Set verbose mode
-    (( $#o_verbose )) && { 
-        verbose=1
-        verbose_output=
+    (( $#o_verbose )) || { 
+        verbose=0
+        verbose_output='>/dev/null 2>&1'
     }
 
     # Set prefix path
@@ -90,7 +90,7 @@ gh-clone-build() {
 
 
     # Create temporary directory for cloning
-    clone_dir=$(mktemp -d -t gh-clone-build-XXXXXX)
+    clone_dir=${ZINIT[PLUGINS_DIR]}
     if [[ ! -d $clone_dir ]]; then
         print "Error: Failed to create temporary directory" >&2
         return 1
@@ -136,12 +136,12 @@ gh-clone-build() {
             rm -rf "$clone_dir"
         fi
     }
-    trap cleanup EXIT INT TERM
+    # trap cleanup EXIT INT TERM
     if (( local_repo_path == 0 )); then
       # Clone repository
       print "Cloning repository: $repository"
       if (( verbose )); then
-          git clone "$repo_url" "$clone_dir/$repo_name" || {
+          git clone "$repo_url" "${ZINIT[PLUGINS_DIR]}/$repo_name" || {
               print "Error: Failed to clone repository" >&2
               return 1
           }
