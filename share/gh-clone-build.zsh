@@ -231,13 +231,13 @@ gh-clone-build() {
             if [[ ! -f configure ]]; then
                 if [[ -f autogen.sh ]]; then
                     (( verbose )) && print "Running autogen.sh..."
-                    ./autogen.sh $verbose_output || {
+                    eval ./autogen.sh $verbose_output || {
                         print "Error: autogen.sh failed" >&2
                         return 1
                     }
                 elif command -v autoreconf >/dev/null 2>&1; then
                     (( verbose )) && print "Running autoreconf..."
-                    autoreconf -i $verbose_output || {
+                    eval autoreconf -i $verbose_output || {
                         print "Error: autoreconf failed" >&2
                         return 1
                     }
@@ -247,7 +247,7 @@ gh-clone-build() {
                 fi
             fi
 
-            ./configure --prefix="$prefix_path" $verbose_output || {
+            eval ./configure --prefix="$prefix_path" $verbose_output || {
                 print "Error: configure failed" >&2
                 return 1
             }
@@ -274,7 +274,7 @@ gh-clone-build() {
                 fi
             fi
             
-            if (( has_install )); then
+            if (( has_prefix )); then
                 # Build with optional PREFIX
                 if (( has_prefix )); then
                     if (( verbose )); then
