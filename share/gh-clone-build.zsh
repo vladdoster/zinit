@@ -258,16 +258,18 @@ gh-clone-build() {
             
             # Check if Makefile has install target and PREFIX support
             local has_install=0 has_prefix=0 makefile_name=""
-            valid_makefile_names='(GNU|)[mM]akefile'
-            print $~valid_makefile_names
+            local valid_makefile_names='(GNU|)[mM]akefile'
+            makefile_name=$~valid_makefile_names
             local -a makefiles=(*[mM]akefile(NY1)) 
-            makefile_name=${makefiles[1]}
+            print ${makefiles}
             if [[ -n $makefile_name ]]; then
                 has_install=1
+                has_prefix=1
                 if grep -q "PREFIX" "$makefile_name" 2>/dev/null; then
                     has_prefix=1
                 fi
             fi
+            has_prefix=1
             
             if (( has_prefix )); then
                 # Build with optional PREFIX
