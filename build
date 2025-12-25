@@ -10,6 +10,18 @@
 
 setopt localoptions extendedglob warncreateglobal typesetsilent
 
+# Helper function to print verbose messages
+__build_verbose() {
+    if (( VERBOSE )); then
+        print -r -- "[VERBOSE] $@"
+    fi
+}
+
+# Helper function to print error messages
+__build_error() {
+    print -r -- "ERROR: $@" >&2
+}
+
 # Main usage information
 __build_usage() {
     print -r -- "Usage: build [options] [subcommands...]"
@@ -93,11 +105,9 @@ __build_make() {
         return 0
     fi
     
-    if (( VERBOSE )); then
-        print -r -- "[VERBOSE] Executing make subcommand"
-        if (( $#target )); then
-            print -r -- "[VERBOSE] Target: ${target[2]}"
-        fi
+    __build_verbose "Executing make subcommand"
+    if (( $#target )); then
+        __build_verbose "Target: ${target[2]}"
     fi
     
     if (( $#target )); then
@@ -115,11 +125,9 @@ __build_configure() {
         return 0
     fi
     
-    if (( VERBOSE )); then
-        print -r -- "[VERBOSE] Executing configure subcommand"
-        if (( $# > 0 )); then
-            print -r -- "[VERBOSE] Arguments: $@"
-        fi
+    __build_verbose "Executing configure subcommand"
+    if (( $# > 0 )); then
+        __build_verbose "Arguments: $@"
     fi
     
     if (( $# > 0 )); then
@@ -139,13 +147,13 @@ __build_load_cmp() {
     
     # Validate that exactly one argument is provided
     if (( $# == 0 )); then
-        print -r -- "Error: load-cmp requires a directory path argument" >&2
+        __build_error "load-cmp requires a directory path argument"
         print -r -- "Run 'build load-cmp --help' for usage information" >&2
         return 1
     fi
     
     if (( $# > 1 )); then
-        print -r -- "Error: load-cmp takes exactly one argument (directory path)" >&2
+        __build_error "load-cmp takes exactly one argument (directory path)"
         print -r -- "Run 'build load-cmp --help' for usage information" >&2
         return 1
     fi
@@ -154,14 +162,12 @@ __build_load_cmp() {
     
     # Check if directory exists
     if [[ ! -d "$dir_path" ]]; then
-        print -r -- "Error: Directory not found: $dir_path" >&2
+        __build_error "Directory not found: $dir_path"
         return 1
     fi
     
-    if (( VERBOSE )); then
-        print -r -- "[VERBOSE] Executing load-cmp subcommand"
-        print -r -- "[VERBOSE] Searching directory: $dir_path"
-    fi
+    __build_verbose "Executing load-cmp subcommand"
+    __build_verbose "Searching directory: $dir_path"
     
     # Find all files in the directory (not subdirectories)
     local -a completion_files
@@ -211,18 +217,16 @@ __build_main() {
     
     if (( $#verbose )); then
         VERBOSE=1
-        print -r -- "[VERBOSE] Verbose mode enabled"
+        __build_verbose "Verbose mode enabled"
     fi
     
     # Store remaining arguments (subcommands)
     remaining_args=("$@")
     
-    if (( VERBOSE )); then
-        if (( $#remaining_args == 0 )); then
-            print -r -- "[VERBOSE] No subcommands specified"
-        else
-            print -r -- "[VERBOSE] Subcommands to process: ${remaining_args[@]}"
-        fi
+    if (( $#remaining_args == 0 )); then
+        __build_verbose "No subcommands specified"
+    else
+        __build_verbose "Subcommands to process: ${remaining_args[@]}"
     fi
     
     # If no subcommands, just run the base command
@@ -266,7 +270,7 @@ __build_main() {
                 __build_load_cmp "${load_cmp_args[@]}"
                 ;;
             *)
-                print -r -- "Error: Unknown subcommand: $subcmd" >&2
+                __build_error "Unknown subcommand: $subcmd"
                 print -r -- "Run 'build --help' for usage information" >&2
                 return 1
                 ;;

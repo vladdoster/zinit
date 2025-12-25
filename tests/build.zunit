@@ -130,7 +130,7 @@
 
 @test 'build invalid subcommand' {
   run zsh "$BUILD_SCRIPT" invalid-command
-  assert $output contains 'Error: Unknown subcommand: invalid-command'
+  assert $output contains 'ERROR: Unknown subcommand: invalid-command'
   assert $state equals 1
 }
 
@@ -150,13 +150,13 @@
 
 @test 'build load-cmp with no arguments' {
   run zsh "$BUILD_SCRIPT" load-cmp
-  assert $output contains 'Error: load-cmp requires a directory path argument'
+  assert $output contains 'ERROR: load-cmp requires a directory path argument'
   assert $state equals 1
 }
 
 @test 'build load-cmp with non-existent directory' {
   run zsh "$BUILD_SCRIPT" load-cmp /nonexistent/test/directory
-  assert $output contains 'Error: Directory not found'
+  assert $output contains 'ERROR: Directory not found'
   assert $state equals 1
 }
 
