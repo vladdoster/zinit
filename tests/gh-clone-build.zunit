@@ -96,6 +96,18 @@
   run $TEST_INSTALL_DIR/bin/vim --version
   assert $state equals 0
 }
+# Test Make luaformatter project detection and build
+@test 'gh-clone-build luaformatter project' {
+  run gh-clone-build --prefix "$ZPFX" "Koihik/LuaFormatter"
+  assert $state equals 0
+  assert $output contains 'Detecting build system...'
+  assert $output contains 'Successfully completed!'
+  
+  # Verify installation
+  assert "$ZPFX/bin/luaformat" exists
+  run $ZPFX/bin/luaformat --version
+  assert $state equals 0
+}
 
 # Test Make project with verbose flag
 @test 'gh-clone-build Make project verbose' {
