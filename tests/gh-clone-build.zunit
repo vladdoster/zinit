@@ -30,8 +30,8 @@
   # Configure git for tests
   git config --global user.email "test@example.com" 2>/dev/null || true
   git config --global user.name "Test User" 2>/dev/null || true
-  typeset -gx ZBIN="${zi_test_dir}/polaris/bin"
-  typeset -gx zpfx="${zi_test_dir}/polaris"
+  typeset -gx ZBIN="$zi_test_dir/polaris/bin"
+  typeset -gx zpfx="$zi_test_dir/polaris"
 }
 
 @teardown {
@@ -89,18 +89,19 @@
 
 # Test Make vim project detection and build
 @test 'gh-clone-build vim project' {
-  mkdir -p "${TEST_INSTALL_DIR}"
-  run gh-clone-build --verbose --prefix "${TEST_INSTALL_DIR}" vim/vim
-  assert ${state} equals 0
-  assert ${output} contains 'Detecting build system...'
-  assert ${output} contains 'Successfully completed!'
+  mkdir -p "$zpfx"
+  run gh-clone-build --verbose --prefix "$zpfx" vim/vim;
+  assert $state equals 0
+  assert $output contains 'Detecting build system...'
+  assert $output contains 'Successfully completed!'
 
-  local binary="${TEST_INSTALL_DIR}/bin/vim"; 
-  assert "${binary}" is_executable
-  assert "${binary}" exists
+  local binary="$ZBIN/vim"; 
+  assert "$binary" is_executable
+  assert "$binary" exists
 
-  run ${binary} --version
-  assert ${state} equals 0
+  run "$binary" --version;
+  assert $output contains 'vim'
+  assert $state equals 0
 }
 
 # Test Make neofetch project detection and build
