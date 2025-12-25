@@ -96,6 +96,18 @@
   run $TEST_INSTALL_DIR/bin/vim --version
   assert $state equals 0
 }
+# Test Make coreutils/coreutils project detection and build
+@test 'gh-clone-build coreutils/coreutils project' {
+  run gh-clone-build --verbose -p "$TEST_INSTALL_DIR" "coreutils/coreutils"
+  assert $state equals 0
+  assert $output contains 'Detecting build system...'
+  assert $output contains 'Successfully completed!'
+  
+  # Verify installation
+  assert "$TEST_INSTALL_DIR/bin/vim" exists
+  run $TEST_INSTALL_DIR/bin/coreutils --version
+  assert $state equals 0
+}
 # Test Make luaformatter project detection and build
 @test 'gh-clone-build luaformatter project' {
   run gh-clone-build --verbose --prefix "$ZPFX" "Koihik/LuaFormatter"
