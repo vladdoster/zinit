@@ -223,22 +223,12 @@ EOF
 # Test GNUmakefile support
 @test 'gh-clone-build GNUmakefile' {
   local project_dir="$TEST_REPO_DIR/gnu-makefile"
-  mkdir -p "$project_dir"
-  (
-    cd "$project_dir"
-    git init -q
-    git config user.email "test@example.com"
-    git config user.name "Test User"
-  
-    cat > main.c << 'EOF'
-#include <stdio.h>
-int main() {
-    printf("Test app\n");
-    return 0;
-}
-EOF
-  
-  # Create GNUmakefile instead of Makefile
+  _create_test_make_project "$project_dir"
+  ( 
+    cd $project_dir
+    $rm -f [mM]akefile
+    
+    # Create GNUmakefile instead of Makefile
     printf 'PREFIX ?= /usr/local\nCC = gcc\n\nall: app\n\napp: main.c\n\t$(CC) -o app main.c\n\ninstall: app\n\tmkdir -p $(PREFIX)/bin\n\tcp app $(PREFIX)/bin/\n' > GNUmakefile
   
     git add .
