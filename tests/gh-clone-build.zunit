@@ -86,7 +86,7 @@
 }
 # Test Make vim project detection and build
 @test 'gh-clone-build vim project' {
-  run gh-clone-build -p "$TEST_INSTALL_DIR" "vim/vim
+  run gh-clone-build -p "$TEST_INSTALL_DIR" "vim/vim"
   assert $state equals 0
   assert $output contains 'Detecting build system...'
   assert $output contains 'Successfully completed!'
