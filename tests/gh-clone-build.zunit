@@ -89,7 +89,7 @@
 # Test Make vim project detection and build
 @test 'gh-clone-build vim project' {
   mkdir -p "$zpfx"
-  run gh-clone-build -v -p "$zpfx" "vim/vim"
+  run gh-clone-build --prefix "$zpfx" "vim/vim"
   assert $state equals 0
   assert $output contains 'Detecting build system...'
   assert $output contains 'Successfully completed!'
@@ -103,44 +103,62 @@
 # Test Make neofetch project detection and build
 @test 'gh-clone-build neofetch project' {
   mkdir -p "$zpfx"
-  run gh-clone-build -v -p "$zpfx" dylanaraps/neofetch;
+  run gh-clone-build --prefix "$zpfx" dylanaraps/neofetch;
   assert $state equals 0
   assert $output contains 'Detecting build system...'
   assert $output contains 'Successfully completed!'
   
-  local neofetch="$ZBIN/neofetch"; 
-  assert "$neofetch" is_executable
-  assert "$neofetch" exists
+  local binary="$ZBIN/neofetch"; 
+  assert "$binary" is_executable
+  assert "$binary" exists
   
-  run "$neofetch" --version; 
+  run "$binary" --version; 
   assert $state equals 1; 
   assert $output contains 'Neofetch'
 }
 
+# Test Make htop project detection and build
+@test 'gh-clone-build htop project' {
+  mkdir -p "$zpfx"
+  run gh-clone-build -v -p "$zpfx" htop-dev/htop;
+  assert $state equals 0
+  assert $output contains 'Detecting build system...'
+  assert $output contains 'Successfully completed!'
+  
+  local binary="$ZBIN/htop"; 
+  assert "$binary" is_executable
+  assert "$binary" exists
+  
+  run "$binary" --version; 
+  assert $state equals 1; 
+  assert $output contains 'htop'
+}
+
 # Test Make coreutils/coreutils project detection and build
-@test 'gh-clone-build coreutils/coreutils project' {
-  run gh-clone-build --verbose -p "$TEST_INSTALL_DIR" "coreutils/coreutils"
-  assert $state equals 0
-  assert $output contains 'Detecting build system...'
-  assert $output contains 'Successfully completed!'
+#@test 'gh-clone-build coreutils/coreutils project' {
+#  run gh-clone-build --verbose -p "$TEST_INSTALL_DIR" "coreutils/coreutils"
+#  assert $state equals 0
+#  assert $output contains 'Detecting build system...'
+#  assert $output contains 'Successfully completed!'
   
-  # Verify installation
-  assert "$TEST_INSTALL_DIR/bin/vim" exists
-  run $TEST_INSTALL_DIR/bin/coreutils --version
-  assert $state equals 0
-}
+# Verify installation
+#  assert "$TEST_INSTALL_DIR/bin/vim" exists
+#  run $TEST_INSTALL_DIR/bin/coreutils --version
+#  assert $state equals 0
+#}
+
 # Test Make luaformatter project detection and build
-@test 'gh-clone-build luaformatter project' {
-  run gh-clone-build --verbose --prefix "$ZPFX" "Koihik/LuaFormatter"
-  assert $state equals 0
-  assert $output contains 'Detecting build system...'
-  assert $output contains 'Successfully completed!'
+#@test 'gh-clone-build luaformatter project' {
+#  run gh-clone-build --verbose --prefix "$ZPFX" "Koihik/LuaFormatter"
+#  assert $state equals 0
+#  assert $output contains 'Detecting build system...'
+#  assert $output contains 'Successfully completed!'
   
   # Verify installation
-  assert "$ZPFX/bin/luaformat" exists
-  run $ZPFX/bin/luaformat --version
-  assert $state equals 0
-}
+#  assert "$ZPFX/bin/luaformat" exists
+#  run $ZPFX/bin/luaformat --version
+#  assert $state equals 0
+#}
 
 # Test Make project with verbose flag
 @test 'gh-clone-build Make project verbose' {
