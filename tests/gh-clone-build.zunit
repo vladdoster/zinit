@@ -92,7 +92,9 @@
   assert $output contains 'Successfully completed!'
   
   # Verify installation
-  assert "$TEST_INSTALL_DIR/bin/zsh" exists
+  assert "$TEST_INSTALL_DIR/bin/vim" exists
+  run $TEST_INSTALL_DIR/bin/vim --version
+  assert $state equals 0
 }
 
 # Test Make project with verbose flag
