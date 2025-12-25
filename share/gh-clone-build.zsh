@@ -158,10 +158,10 @@ gh-clone-build() {
     if [[ -f CMakeLists.txt ]]; then
         build_system="cmake"
         (( verbose )) && print "Detected CMake build system"
-    elif [[ ( -f configure.(in|ac) || -f configure ) && ! -f *[Mm]akefile ]]; then
+    elif [[ ( -f configure.(in|ac) || -f configure ) && -n *~*((#s)|GNU)Makefile((#e)|)*(#qN) ]]; then
         build_system="autotools"
         (( verbose )) && print "Detected Autotools build system"
-    elif [[ -f [Mm]akefile || -f GNUmakefile ]]; then
+    elif [[ -n *((#s)|GNU)[Mm]akefile((#e)|)*(#qN) ]]; 
         build_system="make"
         (( verbose )) && print "Detected Make build system"
     else
