@@ -66,7 +66,7 @@
 @test 'gh-clone-build invalid format' {
   run gh-clone-build invalid-format
   assert $state equals 1
-  assert $output contains 'Error: Invalid repository format'
+  assert $output contains 'Error: Failed to enter repository directory'
 }
 
 # Test Make project detection and build
