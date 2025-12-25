@@ -165,7 +165,7 @@ gh-clone-build() {
     elif [[ -f Makefile ]] || [[ -f makefile ]] || [[ -f GNUmakefile ]]; then
         build_system="make"
         (( verbose )) && print "Detected Make build system"
-    elif [[ -f configure.ac ]] || [[ -f configure.in ]]; then
+    elif [[ -f configure.ac ]] || [[ -f configure.in ]] || [[ -f configure ]]; then
         build_system="autotools"
         (( verbose )) && print "Detected Autotools build system"
     else
