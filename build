@@ -167,6 +167,7 @@ __build_load_cmp() {
     local -a completion_files
     local file first_line
     
+    # Zsh glob: (.N) = (.) regular files only, (N) null glob (no error if no matches)
     for file in "$dir_path"/*(.N); do
         # Read first line of the file
         if [[ -f "$file" && -r "$file" ]]; then
@@ -184,6 +185,7 @@ __build_load_cmp() {
     
     print -r -- "Found ${#completion_files} completion file(s) in: $dir_path"
     for file in "${completion_files[@]}"; do
+        # Zsh parameter expansion: :t = tail (basename of path)
         print -r -- "  - ${file:t}"
     done
 }
