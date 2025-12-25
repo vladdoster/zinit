@@ -27,7 +27,7 @@ gh-clone-build() {
     setopt extendedglob warncreateglobal typesetsilent noshortloops
 
     local -a o_help o_verbose o_prefix
-    local repository repo_url repo_name clone_dir build_system prefix_path
+    local repository repo_url repo_name clone_dir build_system prefix_path verbose_output='>/dev/null 2>&1'
     local -i verbose=0
 
     # Usage message
@@ -69,8 +69,9 @@ gh-clone-build() {
     # Set verbose mode
     (( $#o_verbose )) && { 
         verbose=1
-        verbose_output='>/dev/null 2>&1'
+        verbose_output=
     }
+
     # Set prefix path
     if (( $#o_prefix )); then
         prefix_path="${o_prefix[2]}"
@@ -250,7 +251,7 @@ gh-clone-build() {
                 print "Error: configure failed" >&2
                 return 1
             }
-            ;|
+            ;&
 
         make)
             print "Building with Make..."
