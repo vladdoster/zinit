@@ -1,0 +1,134 @@
+#!/usr/bin/env zunit
+# vim:ft=zsh:sw=4:sts=4:et:foldmarker={,}:foldmethod=marker
+#
+# zdharma-continuum/zinit/tests/build.zunit
+# Copyright (c) 2024 zdharma-continuum
+# Homepage: https://github.com/zdharma-continuum/zinit
+# License: MIT License
+#
+
+@setup {
+  # Set up the path to the build script
+  BUILD_SCRIPT="${PWD}/build"
+}
+
+@test 'build --help' {
+  run zsh "$BUILD_SCRIPT" --help
+  assert $output contains 'Usage: build'
+  assert $output contains '--verbose'
+  assert $output contains 'make'
+  assert $output contains 'configure'
+  assert $state equals 0
+}
+
+@test 'build -h' {
+  run zsh "$BUILD_SCRIPT" -h
+  assert $output contains 'Usage: build'
+  assert $state equals 0
+}
+
+@test 'build with no subcommands' {
+  run zsh "$BUILD_SCRIPT"
+  assert $output contains 'Build command executed with no subcommands'
+  assert $state equals 0
+}
+
+@test 'build with verbose flag' {
+  run zsh "$BUILD_SCRIPT" -v
+  assert $output contains '[VERBOSE] Verbose mode enabled'
+  assert $output contains 'Build command executed with no subcommands'
+  assert $state equals 0
+}
+
+@test 'build with --verbose flag' {
+  run zsh "$BUILD_SCRIPT" --verbose
+  assert $output contains '[VERBOSE] Verbose mode enabled'
+  assert $state equals 0
+}
+
+@test 'build make' {
+  run zsh "$BUILD_SCRIPT" make
+  assert $output contains 'Running make with default target'
+  assert $state equals 0
+}
+
+@test 'build make --help' {
+  run zsh "$BUILD_SCRIPT" make --help
+  assert $output contains 'Usage: build make'
+  assert $output contains '--target'
+  assert $state equals 0
+}
+
+@test 'build make -h' {
+  run zsh "$BUILD_SCRIPT" make -h
+  assert $output contains 'Usage: build make'
+  assert $state equals 0
+}
+
+@test 'build make --target' {
+  run zsh "$BUILD_SCRIPT" make --target mytarget
+  assert $output contains 'Running make with target: mytarget'
+  assert $state equals 0
+}
+
+@test 'build configure' {
+  run zsh "$BUILD_SCRIPT" configure
+  assert $output contains 'Running configure with no arguments'
+  assert $state equals 0
+}
+
+@test 'build configure --help' {
+  run zsh "$BUILD_SCRIPT" configure --help
+  assert $output contains 'Usage: build configure'
+  assert $state equals 0
+}
+
+@test 'build configure -h' {
+  run zsh "$BUILD_SCRIPT" configure -h
+  assert $output contains 'Usage: build configure'
+  assert $state equals 0
+}
+
+@test 'build configure with arguments' {
+  run zsh "$BUILD_SCRIPT" configure --prefix=/usr --enable-debug
+  assert $output contains 'Running configure with arguments: --prefix=/usr --enable-debug'
+  assert $state equals 0
+}
+
+@test 'build make and configure' {
+  run zsh "$BUILD_SCRIPT" make configure
+  assert $output contains 'Running make with default target'
+  assert $output contains 'Running configure with no arguments'
+  assert $state equals 0
+}
+
+@test 'build configure and make' {
+  run zsh "$BUILD_SCRIPT" configure make
+  assert $output contains 'Running configure with no arguments'
+  assert $output contains 'Running make with default target'
+  assert $state equals 0
+}
+
+@test 'build make with target and configure with arguments' {
+  run zsh "$BUILD_SCRIPT" make --target release configure --prefix=/usr
+  assert $output contains 'Running make with target: release'
+  assert $output contains 'Running configure with arguments: --prefix=/usr'
+  assert $state equals 0
+}
+
+@test 'build verbose make and configure' {
+  run zsh "$BUILD_SCRIPT" -v make --target debug configure --enable-debug
+  assert $output contains '[VERBOSE] Verbose mode enabled'
+  assert $output contains '[VERBOSE] Executing make subcommand'
+  assert $output contains '[VERBOSE] Target: debug'
+  assert $output contains 'Running make with target: debug'
+  assert $output contains '[VERBOSE] Executing configure subcommand'
+  assert $output contains 'Running configure with arguments: --enable-debug'
+  assert $state equals 0
+}
+
+@test 'build invalid subcommand' {
+  run zsh "$BUILD_SCRIPT" invalid-command
+  assert $output contains 'Error: Unknown subcommand: invalid-command'
+  assert $state equals 1
+}

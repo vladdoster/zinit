@@ -1,0 +1,188 @@
+#!/usr/bin/env zsh
+# -*- mode: sh; sh-indentation: 4; indent-tabs-mode: nil; sh-basic-offset: 4; -*-
+# vim:ft=zsh:sw=4:sts=4:et
+#
+# build - A Zsh CLI tool demonstrating zparseopts usage
+# Copyright (c) 2024 zdharma-continuum
+# Homepage: https://github.com/zdharma-continuum/zinit
+# License: MIT License
+#
+
+setopt localoptions extendedglob warncreateglobal typesetsilent
+
+# Main usage information
+__build_usage() {
+    print -r -- "Usage: build [options] [subcommands...]"
+    print -r -- ""
+    print -r -- "Options:"
+    print -r -- "  -v, --verbose    Enable verbose output"
+    print -r -- "  -h, --help       Show this help message"
+    print -r -- ""
+    print -r -- "Subcommands:"
+    print -r -- "  make             Run make with optional --target flag"
+    print -r -- "  configure        Run configure with arguments"
+    print -r -- ""
+    print -r -- "Examples:"
+    print -r -- "  build                          # Run with no subcommands"
+    print -r -- "  build -v                       # Run with verbose flag"
+    print -r -- "  build make                     # Run make subcommand"
+    print -r -- "  build make --target mytarget   # Run make with target"
+    print -r -- "  build configure --prefix=/usr  # Run configure with args"
+    print -r -- "  build make configure           # Run both subcommands"
+}
+
+# Make subcommand usage
+__build_make_usage() {
+    print -r -- "Usage: build make [options]"
+    print -r -- ""
+    print -r -- "Options:"
+    print -r -- "  --target <name>  Specify the target to build"
+    print -r -- "  -h, --help       Show this help message"
+}
+
+# Configure subcommand usage
+__build_configure_usage() {
+    print -r -- "Usage: build configure [options] [arguments...]"
+    print -r -- ""
+    print -r -- "Options:"
+    print -r -- "  -h, --help       Show this help message"
+    print -r -- ""
+    print -r -- "Arguments:"
+    print -r -- "  Any arguments will be passed to configure"
+    print -r -- ""
+    print -r -- "Examples:"
+    print -r -- "  build configure --prefix=/usr --enable-debug"
+}
+
+# Process make subcommand
+__build_make() {
+    local -a args target help
+    args=("$@")
+    
+    # Load zsh/zutil for zparseopts
+    zmodload zsh/zutil
+    
+    # Parse options for make subcommand
+    zparseopts -D -F -K -- \
+        -target:=target \
+        {h,-help}=help \
+    || return 1
+    
+    if (( $#help )); then
+        __build_make_usage
+        return 0
+    fi
+    
+    if (( VERBOSE )); then
+        print -r -- "[VERBOSE] Executing make subcommand"
+        if (( $#target )); then
+            print -r -- "[VERBOSE] Target: ${target[2]}"
+        fi
+    fi
+    
+    if (( $#target )); then
+        print -r -- "Running make with target: ${target[2]}"
+    else
+        print -r -- "Running make with default target"
+    fi
+}
+
+# Process configure subcommand
+__build_configure() {
+    # Check for help flag manually before zparseopts
+    if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+        __build_configure_usage
+        return 0
+    fi
+    
+    if (( VERBOSE )); then
+        print -r -- "[VERBOSE] Executing configure subcommand"
+        if (( $# > 0 )); then
+            print -r -- "[VERBOSE] Arguments: $@"
+        fi
+    fi
+    
+    if (( $# > 0 )); then
+        print -r -- "Running configure with arguments: $@"
+    else
+        print -r -- "Running configure with no arguments"
+    fi
+}
+
+# Main function
+__build_main() {
+    local -a verbose help remaining_args
+    local -i VERBOSE=0
+    
+    # Load zsh/zutil for zparseopts
+    zmodload zsh/zutil
+    
+    # Parse main options
+    zparseopts -D -F -K -- \
+        {v,-verbose}=verbose \
+        {h,-help}=help \
+    || return 1
+    
+    if (( $#help )); then
+        __build_usage
+        return 0
+    fi
+    
+    if (( $#verbose )); then
+        VERBOSE=1
+        print -r -- "[VERBOSE] Verbose mode enabled"
+    fi
+    
+    # Store remaining arguments (subcommands)
+    remaining_args=("$@")
+    
+    if (( VERBOSE )); then
+        if (( $#remaining_args == 0 )); then
+            print -r -- "[VERBOSE] No subcommands specified"
+        else
+            print -r -- "[VERBOSE] Subcommands to process: ${remaining_args[@]}"
+        fi
+    fi
+    
+    # If no subcommands, just run the base command
+    if (( $#remaining_args == 0 )); then
+        print -r -- "Build command executed with no subcommands"
+        return 0
+    fi
+    
+    # Process subcommands
+    local -i idx=1
+    while (( idx <= $#remaining_args )); do
+        local subcmd="${remaining_args[idx]}"
+        idx=$((idx + 1))
+        
+        case "$subcmd" in
+            make)
+                # Collect arguments for make subcommand
+                local -a make_args
+                while (( idx <= $#remaining_args )) && [[ "${remaining_args[idx]}" != "configure" ]]; do
+                    make_args+=("${remaining_args[idx]}")
+                    idx=$((idx + 1))
+                done
+                __build_make "${make_args[@]}"
+                ;;
+            configure)
+                # Collect remaining arguments for configure subcommand
+                local -a configure_args
+                while (( idx <= $#remaining_args )) && [[ "${remaining_args[idx]}" != "make" ]]; do
+                    configure_args+=("${remaining_args[idx]}")
+                    idx=$((idx + 1))
+                done
+                __build_configure "${configure_args[@]}"
+                ;;
+            *)
+                print -r -- "Error: Unknown subcommand: $subcmd" >&2
+                print -r -- "Run 'build --help' for usage information" >&2
+                return 1
+                ;;
+        esac
+    done
+}
+
+# Run main function with all arguments
+__build_main "$@"
