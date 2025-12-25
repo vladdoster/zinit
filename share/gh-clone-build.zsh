@@ -224,13 +224,13 @@ gh-clone-build() {
             if [[ ! -f configure ]]; then
                 if [[ -f autogen.sh ]]; then
                     (( verbose )) && print "Running autogen.sh..."
-                    eval { ./autogen.sh } $verbose_output || {
+                    eval "{ ./autogen.sh } $verbose_output" || {
                         print "Error: autogen.sh failed" >&2
                         return 1
                     }
                 elif command -v autoreconf >/dev/null 2>&1; then
                     (( verbose )) && print "Running autoreconf..."
-                    eval { autoreconf -i } $verbose_output || {
+                    eval "{ autoreconf -i } $verbose_output" || {
                         print "Error: autoreconf failed" >&2
                         return 1
                     }
@@ -239,7 +239,7 @@ gh-clone-build() {
                     return 1
                 fi
             fi
-            eval { ./configure --prefix="$prefix_path" } $verbose_output || {
+            eval "{ ./configure --prefix=$prefix_path } $verbose_output" || {
                 print "Error: configure failed" >&2
                 return 1
             }
@@ -266,31 +266,31 @@ gh-clone-build() {
             if (( has_prefix )); then
                 # Build with optional PREFIX
                 if (( has_prefix )); then
-                        eval { make PREFIX=$prefix_path } $verbose_output || {
+                        eval "{ make PREFIX=$prefix_path } $verbose_output" || {
                             print "Error: make build failed" >&2
                             return 1
                         }
                 else
-                    eval { make } $verbose_output || {
+                    eval "{ make } $verbose_output" || {
                         print "Error: make build failed" >&2
                             return 1
                         }
                 fi
                 if (( has_prefix )); then 
                     print "> Installing to custom prefix: $prefix_path"
-                    eval { make PREFIX=$prefix_path install } $verbose_output || {
+                    eval "{ make PREFIX=$prefix_path install } $verbose_output" || {
                         print "Error: make install failed" >&2
                         return 1
                     }
                 else
-                    eval { PREFIX=$ZPFX make install } $verbose_output || {
+                    eval "{ PREFIX=$ZPFX make install } $verbose_output" || {
                         print "Error: make install failed" >&2
                         return 1
                     }
                 fi
             else
                 print "> No install target, just build"
-                eval { make } $verbose_output || {
+                eval "{ make } $verbose_output" || {
                     print "Error: make build failed" >&2
                     return 1
                 }
