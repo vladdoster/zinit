@@ -232,7 +232,10 @@ EOF
   
     cat > main.c << 'EOF'
 #include <stdio.h>
-int main() { printf("GNUmakefile test\n"); return 0; }
+int main() {
+    printf("Test app\n");
+    return 0;
+}
 EOF
   
   # Create GNUmakefile instead of Makefile
