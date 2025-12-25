@@ -233,3 +233,33 @@
   # Cleanup
   rm -rf "$test_dir"
 }
+
+@test '+log error message' {
+  run zsh -c "source '$BUILD_SCRIPT'; +log error 'Test error message'"
+  assert $output contains 'ERROR: Test error message'
+  assert $state equals 0
+}
+
+@test '+log debug message' {
+  run zsh -c "source '$BUILD_SCRIPT'; +log debug 'Test debug message'"
+  assert $output contains 'DEBUG: Test debug message'
+  assert $state equals 0
+}
+
+@test '+log regular message' {
+  run zsh -c "source '$BUILD_SCRIPT'; +log 'Test regular message'"
+  assert $output contains 'LOG: Test regular message'
+  assert $state equals 0
+}
+
+@test '+log with multiple arguments' {
+  run zsh -c "source '$BUILD_SCRIPT'; +log error 'Multiple' 'arguments' 'test'"
+  assert $output contains 'ERROR: Multiple arguments test'
+  assert $state equals 0
+}
+
+@test '+log with custom level' {
+  run zsh -c "source '$BUILD_SCRIPT'; +log info 'Custom level message'"
+  assert $output contains 'LOG: info Custom level message'
+  assert $state equals 0
+}

@@ -22,6 +22,29 @@ __build_error() {
     print -r -- "ERROR: $@" >&2
 }
 
+# General logging function using zparseopts
++log() {
+    # Load zsh/zutil for zparseopts
+    zmodload zsh/zutil
+    
+    local log_type="${1:-log}"
+    shift
+    
+    case "$log_type" in
+        error)
+            print -r -- "ERROR: $@" >&2
+            ;;
+        debug)
+            print -r -- "DEBUG: $@"
+            ;;
+        *)
+            # If first arg is not error or debug, treat it as a regular log message
+            # and include the original first argument back
+            print -r -- "LOG: $log_type $@"
+            ;;
+    esac
+}
+
 # Main usage information
 __build_usage() {
     print -r -- "Usage: build [options] [subcommands...]"
