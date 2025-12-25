@@ -92,7 +92,7 @@
 # Test Make vim project detection and build
 @test 'gh-clone-build vim project' {
   mkdir -p "$ZPFX"
-  run gh-clone-build -p $ZPFX vim/vim
+  run gh-clone-build --prefix "$zpfx" vim/vim;
   assert $state equals 0
   assert $output contains 'Detecting build system...'
   assert $output contains 'Successfully completed!'
