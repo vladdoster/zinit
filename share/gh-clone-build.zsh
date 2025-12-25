@@ -246,7 +246,6 @@ gh-clone-build() {
                     return 1
                 fi
             fi
-
             eval ./configure --prefix="$prefix_path" $verbose_output || {
                 print "Error: configure failed" >&2
                 return 1
@@ -274,77 +273,39 @@ gh-clone-build() {
             if (( has_prefix )); then
                 # Build with optional PREFIX
                 if (( has_prefix )); then
-                    if (( verbose )); then
-                        make PREFIX="$prefix_path" || {
+                        eval make PREFIX=$prefix_path $verbose_output || {
                             print "Error: make build failed" >&2
                             return 1
                         }
-                    else
-                        make PREFIX="$prefix_path" >/dev/null 2>&1 || {
-                            print "Error: make build failed" >&2
-                            return 1
-                        }
-                    fi
                 else
-                    if (( verbose )); then
-                        make || {
-                            print "Error: make build failed" >&2
+                    eval make $verbose_output || {
+                        print "Error: make build failed" >&2
                             return 1
                         }
-                    else
-                        make >/dev/null 2>&1 || {
-                            print "Error: make build failed" >&2
-                            return 1
-                        }
-                    fi
                 fi
-
-                print "Installing to: $prefix_path"
-                if (( has_prefix )); then
-                    if (( verbose )); then
-                        make install PREFIX="$prefix_path" || {
-                            print "Error: make install failed" >&2
-                            return 1
-                        }
-                    else
-                        make install PREFIX="$prefix_path" >/dev/null 2>&1 || {
-                            print "Error: make install failed" >&2
-                            return 1
-                        }
-                    fi
+                if (( has_prefix )); then 
+                    print "> Installing to custom prefix: $prefix_path"
+                    make PREFIX=${prefix_path:A} install || {
+                        print "Error: make install failed" >&2
+                        return 1
+                    }
                 else
-                    if (( verbose )); then
-                        make install || {
-                            print "Error: make install failed" >&2
-                            return 1
-                        }
-                    else
-                        make install >/dev/null 2>&1 || {
-                            print "Error: make install failed" >&2
-                            return 1
-                        }
-                    fi
+                     make install || {
+                        print "Error: make install failed" >&2
+                        return 1
+                    }
                 fi
             else
-                # No install target, just build
-                if (( verbose )); then
-                    make || {
-                        print "Error: make build failed" >&2
-                        return 1
-                    }
-                else
-                    make >/dev/null 2>&1 || {
-                        print "Error: make build failed" >&2
-                        return 1
-                    }
-                fi
-
+                print "> No install target, just build"
+                eval make $verbose_output || {
+                    print "Error: make build failed" >&2
+                    return 1
+                }
                 print "Warning: No install target found in $makefile_name. Built binaries are in: $clone_dir/$repo_name" >&2
-                cleanup_needed=0
+                # cleanup_needed=0
             fi
             ;;
     esac
-
     print "Successfully completed!"
     return 0
 }
