@@ -67,8 +67,10 @@ gh-clone-build() {
     fi
 
     # Set verbose mode
-    (( $#o_verbose )) && verbose=1
-
+    (( $#o_verbose )) && { 
+        verbose=1
+        verbose_output='>/dev/null 2>&1'
+    }
     # Set prefix path
     if (( $#o_prefix )); then
         prefix_path="${o_prefix[2]}"
@@ -228,74 +230,27 @@ gh-clone-build() {
             if [[ ! -f configure ]]; then
                 if [[ -f autogen.sh ]]; then
                     (( verbose )) && print "Running autogen.sh..."
-                    if (( verbose )); then
-                        ./autogen.sh || {
-                            print "Error: autogen.sh failed" >&2
-                            return 1
-                        }
-                    else
-                        ./autogen.sh >/dev/null 2>&1 || {
-                            print "Error: autogen.sh failed" >&2
-                            return 1
-                        }
-                    fi
+                    ./autogen.sh $verbose_output || {
+                        print "Error: autogen.sh failed" >&2
+                        return 1
+                    }
                 elif command -v autoreconf >/dev/null 2>&1; then
                     (( verbose )) && print "Running autoreconf..."
-                    if (( verbose )); then
-                        autoreconf -i || {
-                            print "Error: autoreconf failed" >&2
-                            return 1
-                        }
-                    else
-                        autoreconf -i >/dev/null 2>&1 || {
-                            print "Error: autoreconf failed" >&2
-                            return 1
-                        }
-                    fi
+                    autoreconf -i $verbose_output || {
+                        print "Error: autoreconf failed" >&2
+                        return 1
+                    }
                 else
                     print "Error: configure script not found and cannot generate it" >&2
                     return 1
                 fi
             fi
 
-            if (( verbose )); then
-                ./configure --prefix="$prefix_path" || {
-                    print "Error: configure failed" >&2
-                    return 1
-                }
-            else
-                ./configure --prefix="$prefix_path" >/dev/null 2>&1 || {
-                    print "Error: configure failed" >&2
-                    return 1
-                }
-            fi
-
-            print "Building with Make..."
-            if (( verbose )); then
-                make || {
-                    print "Error: make build failed" >&2
-                    return 1
-                }
-            else
-                make >/dev/null 2>&1 || {
-                    print "Error: make build failed" >&2
-                    return 1
-                }
-            fi
-
-            print "Installing to: $prefix_path"
-            if (( verbose )); then
-                make install || {
-                    print "Error: make install failed" >&2
-                    return 1
-                }
-            else
-                make install >/dev/null 2>&1 || {
-                    print "Error: make install failed" >&2
-                    return 1
-                }
-            fi
-            ;;
+            ./configure --prefix="$prefix_path" $verbose_output || {
+                print "Error: configure failed" >&2
+                return 1
+            }
+            ;;&
 
         make)
             print "Building with Make..."
@@ -397,4 +352,4 @@ gh-clone-build() {
 }
 # ]]]
 
-# vim: ft=zsh sw=4 ts=4 et foldmarker=[[[,]]] foldmethod=marker
+# vim: ft=zsh sw=4 ts=4 et foldmarker=[[[,]]] foldmethod=marke
