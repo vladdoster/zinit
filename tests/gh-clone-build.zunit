@@ -223,27 +223,27 @@ EOF
 @test 'gh-clone-build GNUmakefile' {
   local project_dir="$TEST_REPO_DIR/gnu-makefile"
   mkdir -p "$project_dir"
-  cd "$project_dir"
+  (
+    cd "$project_dir"
+    git init -q
+    git config user.email "test@example.com"
+    git config user.name "Test User"
   
-  git init -q
-  git config user.email "test@example.com"
-  git config user.name "Test User"
-  
-  cat > main.c << 'EOF'
+    cat > main.c << 'EOF'
 #include <stdio.h>
 int main() { printf("GNUmakefile test\n"); return 0; }
 EOF
   
   # Create GNUmakefile instead of Makefile
-  printf 'PREFIX ?= /usr/local\nCC = gcc\n\nall: app\n\napp: main.c\n\t$(CC) -o app main.c\n\ninstall: app\n\tmkdir -p $(PREFIX)/bin\n\tcp app $(PREFIX)/bin/\n' > GNUmakefile
+    printf 'PREFIX ?= /usr/local\nCC = gcc\n\nall: app\n\napp: main.c\n\t$(CC) -o app main.c\n\ninstall: app\n\tmkdir -p $(PREFIX)/bin\n\tcp app $(PREFIX)/bin/\n' > GNUmakefile
   
-  git add .
-  git commit -q -m "Initial commit"
-  
+    git add .
+    git commit -q -m "Initial commit"
+  )
   local install_dir="$TEST_INSTALL_DIR-gnu"
   mkdir -p "$install_dir"
   
-  run gh-clone-build -p "$install_dir" "$project_dir"
+  run gh-clone-build --verbose -p "$install_dir" "$project_dir"
   assert $state equals 0
   assert $output contains 'Detected Make build system'
   assert $output contains 'Successfully completed!'
