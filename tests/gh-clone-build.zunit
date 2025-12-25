@@ -33,14 +33,15 @@
   typeset -gx ZBIN="$zi_test_dir/polaris/bin"
   [[ ! -d $ZBIN ]] && mkdir -p "$ZBIN"
   typeset -gx zpfx="$zi_test_dir/polaris"
-  print "> setup | ZPFX=$ZPFX zpfx=$zpfx"
+   HOME="$zi_test_dir"
+  typeset -gx ZBIN="$zi_test_dir/polaris/bin"
 }
 
-@teardown {
+# @teardown {
   # Clean up test directories
-  [[ -d "$TEST_REPO_DIR" ]] && rm -rf "$TEST_REPO_DIR"
-  [[ -d "$TEST_INSTALL_DIR" ]] && rm -rf "$TEST_INSTALL_DIR"
-}
+  # [[ -d "$TEST_REPO_DIR" ]] && rm -rf "$TEST_REPO_DIR"
+  # [[ -d "$TEST_INSTALL_DIR" ]] && rm -rf "$TEST_INSTALL_DIR"
+# }
 
 # Test help flag
 @test 'gh-clone-build --help' {
