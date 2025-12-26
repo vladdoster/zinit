@@ -2,6 +2,16 @@
 # -*- mode: sh; sh-indentation: 4; indent-tabs-mode: nil; sh-basic-offset: 4; -*-
 # Copyright (c) 2025 Zinit contributors.
 
+run_silent() {
+    local cmd="$1"
+    print -- "> running cmd: ${(qq)cmd}"
+    if (( verbose )); then 
+        eval "$( ${cmd} )"   
+    else
+        eval "$( ${cmd} ) >/dev/null 2>&1"    
+    fi
+}
+
 # FUNCTION: gh-clone-build [[[
 # Clone a GitHub repository, detect build system (make, cmake, or autotools),
 # configure, build, and install the project with optional custom prefix.
@@ -29,13 +39,8 @@ gh-clone-build() {
     local -a o_help o_verbose o_prefix
     local repository repo_url repo_name clone_dir build_system prefix_path verbose_output
     local -i verbose=1
-    run_silent() {
-        if (( verbose )); then 
-            eval "$@"
-        else
-            eval "$@" >/dev/null 2>&1
-        fi
-    }
+
+
     # Usage message
     local -a usage=(
         'Usage:'
