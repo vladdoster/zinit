@@ -3,12 +3,12 @@
 # Copyright (c) 2025 Zinit contributors.
 
 run_silent() {
-    local cmd="${*}"
+    local -a cmd=( ${(@)*} )
     (( verbose )) || {
-        cmd="${cmd} >/dev/null 2>&1"
+        cmd+=" >/dev/null 2>&1"
     }
-    print -- "> running cmd: ${cmd}"
-    eval "${(q)cmd}"
+    print -- "> running cmd: ${(@)cmd}"
+    eval ${(@q)cmd}
 }
 
 # FUNCTION: gh-clone-build [[[
