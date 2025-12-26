@@ -34,7 +34,7 @@
   [[ ! -d $ZBIN ]] && mkdir -p "$ZBIN"
   typeset -gx  zpfx="${zi_test_dir:A}/polaris"
   typeset -gx  HOME="$zi_test_dir"
-  typeset -gx  ZBIN="${zpfx}/polaris/bin"
+  typeset -gx  ZBIN="${zpfx}/bin"
 }
 
 # @teardown {
