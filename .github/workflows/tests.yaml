@@ -83,4 +83,4 @@ jobs:
           make all install
 
       - name: "run tests"
-        run: zunit run tests/${{ matrix.zunit_test }}.zunit
+        run: zunit run --time-limit 600 tests/${{ matrix.zunit_test }}.zunit
