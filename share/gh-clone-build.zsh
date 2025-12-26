@@ -265,31 +265,31 @@ gh-clone-build() {
             if (( has_prefix )); then
                 # Build with optional PREFIX
                 if (( has_prefix )); then
-                        eval $'"$( make PREFIX=${prefix_path} ) ${verbose_output}"' || {
+                        eval $'$( make PREFIX=${prefix_path} ) ${verbose_output}' || {
                             print "Error: make build failed" >&2
                             return 1
                         }
                 else
-                    eval $'"$( make ) $verbose_output"' || {
+                    eval $'$( make ) $verbose_output' || {
                         print "Error: make build failed" >&2
                             return 1
                         }
                 fi
                 if (( has_prefix )); then 
                     print "> Installing to custom prefix: $prefix_path"
-                    eval $'"$( make PREFIX=${prefix_path} install ) ${verbose_output}"' || {
+                    eval $'$( make PREFIX=${prefix_path} install ) ${verbose_output}' || {
                         print "Error: make install failed" >&2
                         return 1
                     }
                 else
-                    eval $'"$( PREFIX=${ZPFX} make install ) ${verbose_output}"' || {
+                    eval $'$( PREFIX=${ZPFX} make install ) ${verbose_output}' || {
                         print "Error: make install failed" >&2
                         return 1
                     }
                 fi
             else
                 print "> No install target, just build"
-                eval $'"(make) ${verbose_output}"' || {
+                eval $'(make) ${verbose_output}' || {
                     print "Error: make build failed" >&2
                     return 1
                 }
