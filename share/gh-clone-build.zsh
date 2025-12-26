@@ -5,13 +5,14 @@
 run_silent() {
     builtin emulate -LR zsh
     setopt extendedglob warncreateglobal typesetsilent noshortloops
-
-    local -a cmd=( ${(@)*} )
+    local -a cmd=()
+    cmd[1]="=(${*[1]} ${(q)*[2,-1]})"
     (( verbose )) || {
-        cmd+=" >/dev/null 2>&1"
+        local silent=">/dev/null 2>&1"
+        cmd[2]=${(q)silent}
     }
     print -- "> running cmd: ${(@)cmd}"
-    builtin eval "${(@q)cmd}"
+    builtin eval command $cmd
 }
 
 # FUNCTION: gh-clone-build [[[
@@ -238,13 +239,13 @@ gh-clone-build() {
             if [[ ! -f configure ]]; then
                 if [[ -f autogen.sh ]]; then
                     (( verbose )) && print "Running autogen.sh..."
-                    run_silent "$( ./autogen.sh )" || {
+                    run_silent ./autogen.sh || {
                         print "Error: autogen.sh failed" >&2
                         return 1
                     }
                 elif command -v autoreconf >/dev/null 2>&1; then
                     (( verbose )) && print "Running autoreconf..."
-                    run_silent "$( autoreconf -i )" || {
+                    run_silent autoreconf -i || {
                         print "Error: autoreconf failed" >&2
                         return 1
                     }
@@ -253,7 +254,7 @@ gh-clone-build() {
                     return 1
                 fi
             fi
-            run_silent "$( ./configure --prefix=${prefix_path} )" || {
+            run_silent ./configure --prefix=${prefix_path} || {
                 print "Error: configure failed" >&2
                 return 1
             }
@@ -280,31 +281,31 @@ gh-clone-build() {
             if (( has_prefix )); then
                 # Build with optional PREFIX
                 if (( has_prefix )); then
-                        run_silent '$( make PREFIX=${prefix_path} )' || {
+                        run_silent make PREFIX=${prefix_path} || {
                             print "Error: make build failed" >&2
                             return 1
                         }
                 else
-                    run_silent '$( make )' || {
+                    run_silent make || {
                         print "Error: make build failed" >&2
                             return 1
                         }
                 fi
                 if (( has_prefix )); then 
                     print "> Installing to custom prefix: $prefix_path"
-                    run_silent '$( make PREFIX=${prefix_path} install )' || {
+                    run_silent make PREFIX=${prefix_path} install || {
                         print "Error: make install failed" >&2
                         return 1
                     }
                 else
-                    run_silent '$( make PREFIX=${prefix_path} install )' || {
+                    run_silent make PREFIX=${prefix_path} install || {
                         print "Error: make install failed" >&2
                         return 1
                     }
                 fi
             else
                 print "> No install target, just build"
-                run_silent '$( make PREFIX=${prefix_path} )' || {
+                run_silent make PREFIX=${prefix_path} || {
                     print "Error: make build failed" >&2
                     return 1
                 }
