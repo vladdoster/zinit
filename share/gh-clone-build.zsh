@@ -225,13 +225,13 @@ gh-clone-build() {
             if [[ ! -f configure ]]; then
                 if [[ -f autogen.sh ]]; then
                     (( verbose )) && print "Running autogen.sh..."
-                    eval "$( ./autogen.sh ) ${verbose_output}" || {
+                    run_silent "./autogen.sh" || {
                         print "Error: autogen.sh failed" >&2
                         return 1
                     }
                 elif command -v autoreconf >/dev/null 2>&1; then
                     (( verbose )) && print "Running autoreconf..."
-                    eval "$( autoreconf -i ) ${verbose_output}" || {
+                    run_silent "autoreconf -i" || {
                         print "Error: autoreconf failed" >&2
                         return 1
                     }
@@ -240,7 +240,7 @@ gh-clone-build() {
                     return 1
                 fi
             fi
-            eval "$( ./configure --prefix=${prefix_path} ) ${verbose_output}" || {
+            run_silent "./configure --prefix=${ZPFX}" || {
                 print "Error: configure failed" >&2
                 return 1
             }
@@ -267,7 +267,7 @@ gh-clone-build() {
             if (( has_prefix )); then
                 # Build with optional PREFIX
                 if (( has_prefix )); then
-                        run_silent "make PREFIX=${prefix_path}" || {
+                        run_silent "make PREFIX=${ZPFX}" || {
                             print "Error: make build failed" >&2
                             return 1
                         }
@@ -279,19 +279,19 @@ gh-clone-build() {
                 fi
                 if (( has_prefix )); then 
                     print "> Installing to custom prefix: $prefix_path"
-                    run_silent "make PREFIX=${prefix_path} install" || {
+                    run_silent "make PREFIX=${ZPFX} install" || {
                         print "Error: make install failed" >&2
                         return 1
                     }
                 else
-                    run_silent "PREFIX=${ZPFX} make install" || {
+                    run_silent "make PREFIX=${ZPFX} install" || {
                         print "Error: make install failed" >&2
                         return 1
                     }
                 fi
             else
                 print "> No install target, just build"
-                run_silent "make" || {
+                run_silent "make PREFIX=${ZPFX}" || {
                     print "Error: make build failed" >&2
                     return 1
                 }
