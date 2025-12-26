@@ -277,31 +277,31 @@ gh-clone-build() {
             if (( has_prefix )); then
                 # Build with optional PREFIX
                 if (( has_prefix )); then
-                        run_silent "$( make PREFIX=${prefix_path} )" || {
+                        run_silent '$( make PREFIX=${prefix_path} )' || {
                             print "Error: make build failed" >&2
                             return 1
                         }
                 else
-                    run_silent "$( make )" || {
+                    run_silent '$( make )' || {
                         print "Error: make build failed" >&2
                             return 1
                         }
                 fi
                 if (( has_prefix )); then 
                     print "> Installing to custom prefix: $prefix_path"
-                    run_silent "$( make PREFIX=${prefix_path} install )" || {
+                    run_silent '$( make PREFIX=${prefix_path} install )' || {
                         print "Error: make install failed" >&2
                         return 1
                     }
                 else
-                    run_silent "$( make PREFIX=${prefix_path} install )" || {
+                    run_silent '$( make PREFIX=${prefix_path} install )' || {
                         print "Error: make install failed" >&2
                         return 1
                     }
                 fi
             else
                 print "> No install target, just build"
-                run_silent "$( make PREFIX=${prefix_path} )" || {
+                run_silent '$( make PREFIX=${prefix_path} )' || {
                     print "Error: make build failed" >&2
                     return 1
                 }
