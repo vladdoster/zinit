@@ -41,7 +41,7 @@ gh-clone-build() {
         '  -p, --prefix <path>     Set custom installation prefix (default: /usr/local)'
         ''
         'Arguments:'
-        '  repository              GitHub repository in format '\''owner/repo'\'' or full URL'
+        '  repository              GitHub repository in format "owner/repo" or full URL'
         ''
         'Examples:'
         '  gh-clone-build --prefix ~/.local neovim/neovim'
@@ -69,7 +69,7 @@ gh-clone-build() {
     # Set verbose mode
     (( $#o_verbose )) || { 
         verbose=0
-        verbose_output='>/dev/null 2>&1'
+        verbose_output=">/dev/null 2>&1"
     }
 
     # Set prefix path
@@ -125,7 +125,6 @@ gh-clone-build() {
     (( verbose )) && print "Repository URL: $repo_url"
     (( verbose )) && print "Repository name: $repo_name"
     (( verbose )) && print "Installation prefix: $prefix_path"
-
     (( verbose )) && print "Clone directory: $clone_dir"
 
     # Cleanup function
@@ -239,7 +238,7 @@ gh-clone-build() {
                     return 1
                 fi
             fi
-            eval "$( ./configure --prefix=$prefix_path ) $verbose_output" || {
+            eval '$( ./configure --prefix=$prefix_path ) $verbose_output' || {
                 print "Error: configure failed" >&2
                 return 1
             }
@@ -250,7 +249,7 @@ gh-clone-build() {
             
             # Check if Makefile has install target and PREFIX support
             local has_install=0 has_prefix=0 makefile_name=""
-            local valid_makefile_names='(GNU|)[mM]akefile'
+            local valid_makefile_names="(GNU|)[mM]akefile"
             makefile_name=$~valid_makefile_names
             local -a makefiles=(*[mM]akefile(NY1)) 
             print ${makefiles}
@@ -266,24 +265,24 @@ gh-clone-build() {
             if (( has_prefix )); then
                 # Build with optional PREFIX
                 if (( has_prefix )); then
-                        eval "$( make PREFIX=$prefix_path ) $verbose_output" || {
+                        eval '$( make PREFIX=$prefix_path ) $verbose_output' || {
                             print "Error: make build failed" >&2
                             return 1
                         }
                 else
-                    eval "$( make ) $verbose_output" || {
+                    eval '$( make ) $verbose_output' || {
                         print "Error: make build failed" >&2
                             return 1
                         }
                 fi
                 if (( has_prefix )); then 
                     print "> Installing to custom prefix: $prefix_path"
-                    eval "$( make PREFIX=$prefix_path install ) $verbose_output" || {
+                    eval '$( make PREFIX=$prefix_path install ) $verbose_output' || {
                         print "Error: make install failed" >&2
                         return 1
                     }
                 else
-                    eval "$( PREFIX=$ZPFX make install ) $verbose_output" || {
+                    eval '$( PREFIX=$ZPFX make install ) $verbose_output' || {
                         print "Error: make install failed" >&2
                         return 1
                     }
