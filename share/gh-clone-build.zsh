@@ -78,20 +78,20 @@ gh-clone-build() {
         # Expand ~ to home directory
         prefix_path="${prefix_path/#\~/$HOME}"
     else
-        prefix_path="$ZPFX"
+        prefix_path="${ZPFX}"
     fi
 
     # Check if repository argument is provided
     if (( $# == 0 )); then
         print "Error: repository argument is required" >&2
-        print -l -- $usage
+        print -l -- ${usage}
         return 1
     fi
 
 
     # Create temporary directory for cloning
     clone_dir=${ZINIT[PLUGINS_DIR]}
-    if [[ ! -d $clone_dir ]]; then
+    if [[ ! -d ${clone_dir} ]]; then
         print "Error: Failed to create temporary directory" >&2
         return 1
     fi
@@ -131,21 +131,21 @@ gh-clone-build() {
 
     if (( local_repo_path == 0 )); then
       # Clone repository
-      print "Cloning repository: $repository"
+      print "Cloning repository: ${repository}"
       if (( verbose )); then
-          git clone "$repo_url" "${ZINIT[PLUGINS_DIR]}/$repo_name" || {
-              print "Error: Failed to clone repository" >&2
+          git clone "${repo_url}" "${clone_dir}/${repo_name}" || {
+              print "Error: Failed to clone ${repo_name} repository" >&2
               return 1
           }
       else
-          git clone -q "$repo_url" "$clone_dir/$repo_name" 2>/dev/null || {
-              print "Error: Failed to clone repository" >&2
+          git clone -q "${repo_url}" "${clone_dir}/${repo_name}" 2>/dev/null || {
+              print "Error: Failed to clone ${repo_name} repository" >&2
               return 1
           }
       fi
 
       # Change to repository directory
-      cd "$clone_dir/$repo_name" || {
+      cd "${clone_dir}/${repo_name}" || {
           print "Error: Failed to enter repository directory" >&2
           return 1
       }
@@ -223,13 +223,13 @@ gh-clone-build() {
             if [[ ! -f configure ]]; then
                 if [[ -f autogen.sh ]]; then
                     (( verbose )) && print "Running autogen.sh..."
-                    eval "$( ./autogen.sh ) $verbose_output" || {
+                    eval "$( ./autogen.sh ) ${verbose_output}" || {
                         print "Error: autogen.sh failed" >&2
                         return 1
                     }
                 elif command -v autoreconf >/dev/null 2>&1; then
                     (( verbose )) && print "Running autoreconf..."
-                    eval "$( autoreconf -i ) $verbose_output" || {
+                    eval "$( autoreconf -i ) ${verbose_output}" || {
                         print "Error: autoreconf failed" >&2
                         return 1
                     }
@@ -238,7 +238,7 @@ gh-clone-build() {
                     return 1
                 fi
             fi
-            eval '$( ./configure --prefix=$prefix_path ) $verbose_output' || {
+            eval "$( ./configure --prefix=${prefix_path} ) ${verbose_output}" || {
                 print "Error: configure failed" >&2
                 return 1
             }
@@ -265,31 +265,31 @@ gh-clone-build() {
             if (( has_prefix )); then
                 # Build with optional PREFIX
                 if (( has_prefix )); then
-                        eval '$( make PREFIX=$prefix_path ) $verbose_output' || {
+                        eval "$( make PREFIX=${prefix_path} ) ${verbose_output}" || {
                             print "Error: make build failed" >&2
                             return 1
                         }
                 else
-                    eval '$( make ) $verbose_output' || {
+                    eval "$( make ) $verbose_output" || {
                         print "Error: make build failed" >&2
                             return 1
                         }
                 fi
                 if (( has_prefix )); then 
                     print "> Installing to custom prefix: $prefix_path"
-                    eval '$( make PREFIX=$prefix_path install ) $verbose_output' || {
+                    eval "$( make PREFIX=${prefix_path} install ) ${verbose_output}" || {
                         print "Error: make install failed" >&2
                         return 1
                     }
                 else
-                    eval '$( PREFIX=$ZPFX make install ) $verbose_output' || {
+                    eval "$( PREFIX=${ZPFX} make install ) ${verbose_output}" || {
                         print "Error: make install failed" >&2
                         return 1
                     }
                 fi
             else
                 print "> No install target, just build"
-                eval "$( make ) $verbose_output" || {
+                eval "(make) ${verbose_output}" || {
                     print "Error: make build failed" >&2
                     return 1
                 }
