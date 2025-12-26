@@ -1,4 +1,5 @@
 allow_risky: false
+time_limit: 600
 directories:
   output: tests/_output
   support: tests/_support
