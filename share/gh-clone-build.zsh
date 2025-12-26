@@ -29,7 +29,9 @@ gh-clone-build() {
     local -a o_help o_verbose o_prefix
     local repository repo_url repo_name clone_dir build_system prefix_path verbose_output
     local -i verbose=1
-
+    run_silent() {
+        eval "$@" >/dev/null 2>&1
+    }
     # Usage message
     local -a usage=(
         'Usage:'
@@ -265,31 +267,31 @@ gh-clone-build() {
             if (( has_prefix )); then
                 # Build with optional PREFIX
                 if (( has_prefix )); then
-                        eval $'$( make PREFIX=${prefix_path} ) ${verbose_output}' || {
+                        run_silent "make PREFIX=${prefix_path}" || {
                             print "Error: make build failed" >&2
                             return 1
                         }
                 else
-                    eval $'$( make ) $verbose_output' || {
+                    run_silent "make" || {
                         print "Error: make build failed" >&2
                             return 1
                         }
                 fi
                 if (( has_prefix )); then 
                     print "> Installing to custom prefix: $prefix_path"
-                    eval $'$( make PREFIX=${prefix_path} install ) ${verbose_output}' || {
+                    run_silent "make PREFIX=${prefix_path} install" || {
                         print "Error: make install failed" >&2
                         return 1
                     }
                 else
-                    eval $'$( PREFIX=${ZPFX} make install ) ${verbose_output}' || {
+                    run_silent "PREFIX=${ZPFX} make install" || {
                         print "Error: make install failed" >&2
                         return 1
                     }
                 fi
             else
                 print "> No install target, just build"
-                eval $'(make) ${verbose_output}' || {
+                run_silent "make" || {
                     print "Error: make build failed" >&2
                     return 1
                 }
