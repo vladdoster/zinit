@@ -3,12 +3,15 @@
 # Copyright (c) 2025 Zinit contributors.
 
 run_silent() {
+    builtin emulate -LR zsh
+    setopt extendedglob warncreateglobal typesetsilent noshortloops
+
     local -a cmd=( ${(@)*} )
     (( verbose )) || {
         cmd+=" >/dev/null 2>&1"
     }
     print -- "> running cmd: ${(@)cmd}"
-    eval ${(@q)cmd}
+    builtin eval "${(@q)cmd}"
 }
 
 # FUNCTION: gh-clone-build [[[
