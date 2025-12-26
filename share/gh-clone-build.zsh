@@ -30,7 +30,11 @@ gh-clone-build() {
     local repository repo_url repo_name clone_dir build_system prefix_path verbose_output
     local -i verbose=1
     run_silent() {
-        eval "$@" >/dev/null 2>&1
+        if (( verbose )); then 
+            eval "$@"
+        else
+            eval "$@" >/dev/null 2>&1
+        fi
     }
     # Usage message
     local -a usage=(
@@ -80,8 +84,10 @@ gh-clone-build() {
         # Expand ~ to home directory
         prefix_path="${prefix_path/#\~/$HOME}"
     else
-        prefix_path="${ZPFX}"
+        prefix_path="${ZINIT[HOME_DIR]}/polaris"
+        mkdir -p $prefix_path
     fi
+    prefix_path="${ZINIT[HOME_DIR]}"
 
     # Check if repository argument is provided
     if (( $# == 0 )); then
@@ -240,7 +246,7 @@ gh-clone-build() {
                     return 1
                 fi
             fi
-            run_silent "./configure --prefix=${ZPFX}" || {
+            run_silent "./configure --prefix=${prefix_path}" || {
                 print "Error: configure failed" >&2
                 return 1
             }
@@ -267,7 +273,7 @@ gh-clone-build() {
             if (( has_prefix )); then
                 # Build with optional PREFIX
                 if (( has_prefix )); then
-                        run_silent "make PREFIX=${ZPFX}" || {
+                        run_silent "make PREFIX=${prefix_path}" || {
                             print "Error: make build failed" >&2
                             return 1
                         }
@@ -279,19 +285,19 @@ gh-clone-build() {
                 fi
                 if (( has_prefix )); then 
                     print "> Installing to custom prefix: $prefix_path"
-                    run_silent "make PREFIX=${ZPFX} install" || {
+                    run_silent "make PREFIX=${prefix_path} install" || {
                         print "Error: make install failed" >&2
                         return 1
                     }
                 else
-                    run_silent "make PREFIX=${ZPFX} install" || {
+                    run_silent "make PREFIX=${prefix_path} install" || {
                         print "Error: make install failed" >&2
                         return 1
                     }
                 fi
             else
                 print "> No install target, just build"
-                run_silent "make PREFIX=${ZPFX}" || {
+                run_silent "make PREFIX=${prefix_path}" || {
                     print "Error: make build failed" >&2
                     return 1
                 }
