@@ -42,7 +42,7 @@
 
 @test '+zi-execute with failing command and --silent' {
   run +zi-execute --silent false
-  assert $output is_empty
+  assert $output contains 'Executing:'
   assert $state equals 1
 }
 
