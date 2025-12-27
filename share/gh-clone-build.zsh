@@ -6,7 +6,7 @@ run_silent() {
     builtin emulate -LR zsh
     setopt extendedglob warncreateglobal typesetsilent noshortloops
     local -a cmd=()
-    cmd[1]="=(${*[1]} ${(q)*[2,-1]})"
+    cmd[1]="=(${*[1]} -- ${(q)*[2,-1]})"
     (( verbose )) || {
         local silent=">/dev/null 2>&1"
         cmd[2]=${(q)silent}
