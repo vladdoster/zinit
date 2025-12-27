@@ -5,6 +5,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  HOMEBREW_NO_ENV_HINTS: 1
   HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: 1
   TERM: xterm-256color
 
@@ -67,6 +68,8 @@ jobs:
 
       - name: "install dependencies"
         id: install-deps
+        env:
+          HOMEBREW_NO_ENV_HINTS: 1
         run: |
           brew install --force --overwrite autoconf automake binutils byacc coreutils curl gettext gnu-sed libevent libtool libuv lua lua@5.4 make ncurses ninja parallel pkg-config texinfo unzip xz zsh
           brew link --force --overwrite ncurses
