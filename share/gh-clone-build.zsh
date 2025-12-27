@@ -5,12 +5,12 @@
 run_silent() {
     builtin emulate zsh -o extendedglob
     local -a cmd=()
-    cmd[1]="${@[1]} ${(q)@[2,-1]}"
+    cmd[1]="command ${@[1]} -- ${(q)@[2,-1]}"
     (( verbose )) && {
         local silent=""
         cmd[2]='>/dev/null 2>&1'
     }
-    eval "$(${(q)cmd[@]})"
+    eval "$(${(Q)cmd})"
 }
 
 # FUNCTION: gh-clone-build [[[
