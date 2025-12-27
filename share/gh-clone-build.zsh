@@ -11,8 +11,8 @@ run_silent() {
         local silent=""
         cmd+=" >/dev/null 2>&1"
     }
-    print -Pr -- "> running cmd: ${(q)cmd}"
-    eval "${cmd}"
+    print -Pr -- "> running cmd: ${(Q)cmd}"
+    eval "${(Q)cmd}"
 }
 
 # FUNCTION: gh-clone-build [[[
