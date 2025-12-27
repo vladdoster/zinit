@@ -40,8 +40,10 @@
   if [[ ! -d $ZBIN ]]; then
     mkdir -p "${ZBIN}"
   fi
-  typeset -gx zpfx="${zi_test_dir}"/polaris
-  typeset -gx HOME="${zi_test_dir}"
+  typeset -gx zpfx="$ZPFX"
+  #typeset -gx HOME="${zi_test_dir}"
+  export ZBIN
+  export zpfx=$ZPFX
 }
 
 # @teardown {
@@ -87,27 +89,27 @@
   local test_make_repo="$TEST_REPO_DIR/test-make-repo"
   _create_test_make_project "$test_make_repo"
   
-  run gh-clone-build -p "$TEST_INSTALL_DIR" "$test_make_repo"
+  run gh-clone-build --prefix "$zpfx" "$test_make_repo"
   assert $state equals 0
   assert $output contains 'Detecting build system...'
   assert $output contains 'Building with Make...'
   assert $output contains 'Successfully completed!'
   
   # Verify installation
-  assert "${TEST_INSTALL_DIR}/bin/test-app" exists
+  assert "${ZBIN}/test-app" exists
 }
 
 # Test Make vim project detection and build
 @test 'gh-clone-build vim project' {
-  mkdir -p "$ZBIN"
   run gh-clone-build --prefix "$zpfx" vim/vim;
   assert $state equals 0
   assert $output contains 'Detecting build system...'
   assert $output contains 'Successfully completed!'
 
   local binary="$ZBIN/vim"
-  assert "$binary" is_executable
-  assert "$binary" exists
+  print -l $ZBIN
+  assert $binary is_executable
+  assert $binary exists
 
   run "$binary" --version;
   assert $output contains 'vim'
