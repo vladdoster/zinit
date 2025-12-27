@@ -13,14 +13,18 @@
   load "${PWD}/tests/_support/build_helpers"
   # Get the repository root
   typeset -gx GIT_REPO=$(git rev-parse --show-toplevel 2>/dev/null || echo "${PWD}")
-  typeset -gx TMPPREFIX="$PWD"
-  export TMPPREFIX="$PWD"
-  # Source the gh-clone-build function
-  if [[ -n "${ZINIT[BIN_DIR]}" ]]; then
-    source "${ZINIT[BIN_DIR]}/share/gh-clone-build.zsh"
-  else
-    source "${GIT_REPO}/share/gh-clone-build.zsh"
-  fi
+  typeset -gx TMPPREFIX="${ZINIT[HOME_DIR]}/tmp"
+  export TMPPREFIX="${ZINIT[HOME_DIR]}/tmp"
+  mkdir -p $TMPPREFIX
+  chmod -R 777 $TMPPREFIX
+  {   
+    # Source the gh-clone-build function
+    local test_helper="${ZINIT[BIN_DIR]:-${GIT_REPO}}"
+    [[ -d ${ZINIT[BIN_DIR]} ]] && { test_helper=${ZINIT[BIN_DIR]} }
+  } always {
+    source ${test_helper}/share/gh-clone-build.zsh
+    print -- "sourced ${test_helper}/share/gh-clone-build.zsh"
+  }
   
   # Create a temporary directory for test repositories
   typeset -gx TEST_REPO_DIR=$(mktemp -d)
