@@ -5,14 +5,14 @@
 run_silent() {
     builtin emulate -LR zsh
     setopt extendedglob warncreateglobal typesetsilent noshortloops
-    local -a cmd=()
-    cmd[1]="=(${*[1]} -- ${(q)*[2,-1]})"
+    typeset cmd
+    cmd="${@[1]} ${(Dq)@[2,-1]}"
     (( verbose )) || {
-        local silent=">/dev/null 2>&1"
-        cmd[2]=${(q)silent}
+        local silent=""
+        cmd+=" >/dev/null 2>&1"
     }
-    print -- "> running cmd: ${(@)cmd}"
-    builtin eval command $cmd
+    print -Pr -- "> running cmd: ${(D)cmd}"
+    eval '${cmd}' 2> /dev/null >&2
 }
 
 # FUNCTION: gh-clone-build [[[
@@ -147,7 +147,7 @@ gh-clone-build() {
 
     if (( local_repo_path == 0 )); then
       # Clone repository
-      print "Cloning repository: ${repository}"
+      print "> Cloning repository: ${repository}"
       if (( verbose )); then
           git clone "${repo_url}" "${clone_dir}/${repo_name}" || {
               print "Error: Failed to clone ${repo_name} repository" >&2
@@ -167,18 +167,18 @@ gh-clone-build() {
       }
     fi
 
-    print "Detecting build system..."
+    print "> Detecting build system..."
 
     # Detect build system
     if [[ -f CMakeLists.txt ]]; then
         build_system="cmake"
-        (( verbose )) && print "Detected CMake build system"
+        (( verbose )) && print -- "== Detected CMake build system"
     elif [[ ( -f configure.(in|ac) || -f configure ) ]] && [[ -z Makefile*(#qN) ]]; then
         build_system="autotools"
-        (( verbose )) && print "Detected Autotools build system"
+        (( verbose )) && print -- "== Detected Autotools build system"
     elif [[ -n Makefile*(#qN) ]]; then
         build_system="make"
-        (( verbose )) && print "Detected Make build system"
+        (( verbose )) && print -- "== Detected Make build system"
     else
         print "Error: Could not detect build system (no CMakeLists.txt, Makefile, or configure.ac found)" >&2
         return 1
@@ -187,7 +187,7 @@ gh-clone-build() {
     # Configure and build based on detected build system
     case $build_system in
         cmake)
-            print "Configuring with CMake..."
+            print "> Configuring with CMake..."
             mkdir -p build && cd build || {
                 print "Error: Failed to create build directory" >&2
                 return 1
@@ -205,7 +205,7 @@ gh-clone-build() {
                 }
             fi
 
-            print "Building with CMake..."
+            print "> Building with CMake..."
             if (( verbose )); then
                 cmake --build . || {
                     print "Error: CMake build failed" >&2
@@ -218,7 +218,7 @@ gh-clone-build() {
                 }
             fi
 
-            print "Installing to: $prefix_path"
+            print "> Installing to: $prefix_path"
             if (( verbose )); then
                 cmake --install . || {
                     print "Error: CMake install failed" >&2
@@ -233,19 +233,19 @@ gh-clone-build() {
             ;;
 
         autotools)
-            print "Configuring with Autotools..."
+            print "> Configuring with Autotools..."
             
             # Generate configure script if it doesn't exist
             if [[ ! -f configure ]]; then
                 if [[ -f autogen.sh ]]; then
-                    (( verbose )) && print "Running autogen.sh..."
-                    run_silent ./autogen.sh || {
+                    (( verbose )) && print -- "== running autogen.sh..."
+                    { run_silent 'sh' './autogen.sh' } || {
                         print "Error: autogen.sh failed" >&2
                         return 1
                     }
                 elif command -v autoreconf >/dev/null 2>&1; then
-                    (( verbose )) && print "Running autoreconf..."
-                    run_silent autoreconf -i || {
+                    (( verbose )) && print -- "== running autoreconf..."
+                    { run_silent 'autoreconf' '-i' } || {
                         print "Error: autoreconf failed" >&2
                         return 1
                     }
@@ -254,14 +254,15 @@ gh-clone-build() {
                     return 1
                 fi
             fi
-            run_silent ./configure --prefix=${prefix_path} || {
+            print -- "== running ./configure --prefix=${prefix_path}..."
+            { run_silent 'sh' './configure' "--prefix=${prefix_path}" } || {
                 print "Error: configure failed" >&2
                 return 1
             }
             ;&
 
         make)
-            print "Building with Make..."
+            print "> Building with Make..."
             
             # Check if Makefile has install target and PREFIX support
             local has_install=0 has_prefix=0 makefile_name=""
@@ -281,31 +282,37 @@ gh-clone-build() {
             if (( has_prefix )); then
                 # Build with optional PREFIX
                 if (( has_prefix )); then
-                        run_silent make PREFIX=${prefix_path} || {
-                            print "Error: make build failed" >&2
-                            return 1
-                        }
-                else
-                    run_silent make || {
+                    { 
+                        run_silent 'make' "PREFIX=${prefix_path}" 
+                    } || {
                         print "Error: make build failed" >&2
-                            return 1
-                        }
+                        return 1
+                    }
+                else
+                    {
+                        run_silent 'make' 
+                    } || {
+                        print "Error: make build failed" >&2
+                        return 1
+                    }
                 fi
                 if (( has_prefix )); then 
-                    print "> Installing to custom prefix: $prefix_path"
-                    run_silent make PREFIX=${prefix_path} install || {
+                    print "== Installing to custom prefix: $prefix_path"
+                    $(
+                        run_silent "make" "PREFIX=${prefix_path}" "install"
+                    ) || {
                         print "Error: make install failed" >&2
                         return 1
                     }
                 else
-                    run_silent make PREFIX=${prefix_path} install || {
+                    ( run_silent "make" "PREFIX=${prefix_path}" "install" ) || {
                         print "Error: make install failed" >&2
                         return 1
                     }
                 fi
             else
-                print "> No install target, just build"
-                run_silent make PREFIX=${prefix_path} || {
+                print "== No install target, just build"
+                { run_silent 'make' "PREFIX=${prefix_path}" } || {
                     print "Error: make build failed" >&2
                     return 1
                 }
