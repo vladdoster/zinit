@@ -11,7 +11,7 @@ run_silent() {
         local silent=""
         cmd+=" >/dev/null 2>&1"
     }
-    print -Pr -- "> running cmd: ${(Q)cmd}"
+    print -- "== running cmd: ${(Q)cmd}"
     eval "${(Q)cmd}"
 }
 
