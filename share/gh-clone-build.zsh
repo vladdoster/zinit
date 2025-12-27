@@ -3,16 +3,14 @@
 # Copyright (c) 2025 Zinit contributors.
 
 run_silent() {
-    builtin emulate -LR zsh
-    setopt extendedglob warncreateglobal typesetsilent noshortloops
-    typeset cmd
-    cmd="${@[1]} ${(D)@[2,-1]}"
-    (( verbose )) || {
+    builtin emulate zsh -o extendedglob
+    local -a cmd=()
+    cmd[1]="${@[1]} ${(q)@[2,-1]}"
+    (( verbose )) && {
         local silent=""
-        cmd+=" >/dev/null 2>&1"
+        cmd[2]='>/dev/null 2>&1'
     }
-    print -- "== running cmd: ${(Q)cmd}"
-    eval "${(Q)cmd}"
+    eval "$(${(q)cmd[@]})"
 }
 
 # FUNCTION: gh-clone-build [[[
@@ -147,7 +145,7 @@ gh-clone-build() {
 
     if (( local_repo_path == 0 )); then
       # Clone repository
-      print "> Cloning repository: ${repository}"
+      print -- "> Cloning repository: ${repository}"
       if (( verbose )); then
           git clone "${repo_url}" "${clone_dir}/${repo_name}" || {
               print "Error: Failed to clone ${repo_name} repository" >&2
@@ -167,7 +165,7 @@ gh-clone-build() {
       }
     fi
 
-    print "> Detecting build system..."
+    print -- "> Detecting build system..."
 
     # Detect build system
     if [[ -f CMakeLists.txt ]]; then
@@ -187,7 +185,7 @@ gh-clone-build() {
     # Configure and build based on detected build system
     case $build_system in
         cmake)
-            print "> Configuring with CMake..."
+            print -- "> Configuring with CMake..."
             mkdir -p build && cd build || {
                 print "Error: Failed to create build directory" >&2
                 return 1
@@ -205,7 +203,7 @@ gh-clone-build() {
                 }
             fi
 
-            print "> Building with CMake..."
+            print -- "> Building with CMake..."
             if (( verbose )); then
                 cmake --build . || {
                     print "Error: CMake build failed" >&2
@@ -218,7 +216,7 @@ gh-clone-build() {
                 }
             fi
 
-            print "> Installing to: $prefix_path"
+            print -- "> Installing to: $prefix_path"
             if (( verbose )); then
                 cmake --install . || {
                     print "Error: CMake install failed" >&2
@@ -233,7 +231,7 @@ gh-clone-build() {
             ;;
 
         autotools)
-            print "> Configuring with Autotools..."
+            print -- "> Configuring with Autotools..."
             
             # Generate configure script if it doesn't exist
             if [[ ! -f configure ]]; then
@@ -262,7 +260,7 @@ gh-clone-build() {
             ;&
 
         make)
-            print "> Building with Make..."
+            print -- "= Building with Make..."
             
             # Check if Makefile has install target and PREFIX support
             local has_install=0 has_prefix=0 makefile_name=""
@@ -280,7 +278,6 @@ gh-clone-build() {
             has_prefix=1
             
             if (( has_prefix )); then
-                # Build with optional PREFIX
                 if (( has_prefix )); then
                     { 
                         run_silent 'make' "PREFIX=${prefix_path}" 
@@ -297,7 +294,7 @@ gh-clone-build() {
                     }
                 fi
                 if (( has_prefix )); then 
-                    print "== Installing to custom prefix: $prefix_path"
+                    print -- "== Installing to custom prefix: $prefix_path"
                     $(
                         run_silent "make" "PREFIX=${prefix_path}" "install"
                     ) || {
@@ -311,7 +308,7 @@ gh-clone-build() {
                     }
                 fi
             else
-                print "== No install target, just build"
+                print -- "== No install target, just build"
                 { run_silent 'make' "PREFIX=${prefix_path}" } || {
                     print "Error: make build failed" >&2
                     return 1
