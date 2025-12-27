@@ -1,0 +1,69 @@
+#!/usr/bin/env zunit
+# vim:ft=zsh:sw=4:sts=4:et:foldmarker={,}:foldmethod=marker
+#
+# zdharma-continuum/zinit/tests/execute.zunit
+# Copyright (c) 2016-2021 Sebastian Gniazdowski
+# Copyright (c) 2021-2024 zdharma-continuum
+# Homepage: https://github.com/zdharma-continuum/zinit
+# License: MIT License
+#
+# Tests for +zi-execute function
+
+@setup {
+  # Source the additional functions file
+  source "${ZUNIT_DIR}/../zinit-additional.zsh"
+}
+
+@test '+zi-execute with successful command' {
+  run +zi-execute echo "Hello World"
+  assert $output contains 'Hello World'
+  assert $state equals 0
+}
+
+@test '+zi-execute with --silent flag' {
+  run +zi-execute --silent echo "Should not see this"
+  assert $output is_empty
+  assert $state equals 0
+}
+
+@test '+zi-execute with -s short flag' {
+  run +zi-execute -s echo "Should not see this either"
+  assert $output is_empty
+  assert $state equals 0
+}
+
+@test '+zi-execute with failing command' {
+  run +zi-execute false
+  assert $state equals 1
+}
+
+@test '+zi-execute with failing command and --silent' {
+  run +zi-execute --silent false
+  assert $output is_empty
+  assert $state equals 1
+}
+
+@test '+zi-execute with no arguments' {
+  run +zi-execute
+  assert $output contains 'Error: No command specified'
+  assert $state equals 1
+}
+
+@test '+zi-execute with multiple arguments combined' {
+  run +zi-execute echo "Hello" "World" "Test"
+  assert $output contains 'Hello World Test'
+  assert $state equals 0
+}
+
+@test '+zi-execute with command that uses pipes' {
+  run +zi-execute echo "test" "|" grep "test"
+  assert $output contains 'test'
+  assert $state equals 0
+}
+
+@test '+zi-execute with command that uses variables' {
+  TEST_VAR="test_value"
+  run +zi-execute echo '$TEST_VAR'
+  assert $output contains 'test_value'
+  assert $state equals 0
+}
