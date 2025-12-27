@@ -24,8 +24,7 @@
     fi
     
     # Combine all remaining arguments into a single command string
-    local cmd="$*"
-
+    local cmd="${(z)${(@)*}}"
     +zi-log "{ice}Executing:{rst} $cmd"
     # Execute the command
     if (( $#o_silent )); then
