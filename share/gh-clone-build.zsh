@@ -12,7 +12,7 @@ run_silent() {
         cmd+=" >/dev/null 2>&1"
     }
     print -Pr -- "> running cmd: ${(q)cmd}"
-    eval '${(q)cmd}' 2> /dev/null >&2
+    eval "${cmd}"
 }
 
 # FUNCTION: gh-clone-build [[[
