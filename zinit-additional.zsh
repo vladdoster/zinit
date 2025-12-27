@@ -240,6 +240,9 @@ function $f {
     # Combine all remaining arguments into a single command string
     local cmd="$*"
     
+    # Log the command that will be executed
+    +zi-log "{ice}Executing:{rst} $cmd"
+    
     # Execute the command
     if (( $#o_silent )); then
         # Silent mode: suppress output

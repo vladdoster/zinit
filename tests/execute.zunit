@@ -16,19 +16,22 @@
 
 @test '+zi-execute with successful command' {
   run +zi-execute echo "Hello World"
+  assert $output contains 'Executing:'
   assert $output contains 'Hello World'
   assert $state equals 0
 }
 
 @test '+zi-execute with --silent flag' {
   run +zi-execute --silent echo "Should not see this"
-  assert $output is_empty
+  assert $output contains 'Executing:'
+  assert $output not_contain 'Should not see this'
   assert $state equals 0
 }
 
 @test '+zi-execute with -s short flag' {
   run +zi-execute -s echo "Should not see this either"
-  assert $output is_empty
+  assert $output contains 'Executing:'
+  assert $output not_contain 'Should not see this either'
   assert $state equals 0
 }
 
