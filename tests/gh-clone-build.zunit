@@ -9,11 +9,12 @@
 # Tests for the gh-clone-build function
 
 @setup {
+  setopt extended_glob
   load "${PWD}/tests/_support/build_helpers"
   # Get the repository root
   typeset -gx GIT_REPO=$(git rev-parse --show-toplevel 2>/dev/null || echo "${PWD}")
-  typeset -gx TMPPREFIX="${ZINIT[BIN_DIR]}/tests/_support/tmp"
-  mkdir -p "${TMPPREFIX}"
+  typeset -gx TMPPREFIX="$PWD"
+  export TMPPREFIX="$PWD"
   # Source the gh-clone-build function
   if [[ -n "${ZINIT[BIN_DIR]}" ]]; then
     source "${ZINIT[BIN_DIR]}/share/gh-clone-build.zsh"
@@ -26,10 +27,8 @@
   
   # Create a temporary install directory
   typeset -gx TEST_INSTALL_DIR=$(mktemp -d)
-  print -P -- "PATH=/opt/homebrew/opt/"{'binutils/bin:','make/libexec/gnubin:'}"$PATH"
-  export PATH="/opt/homebrew/opt/"{'binutils/bin:','make/libexec/gnubin:'}"$PATH"
-  path=(/opt/homebrew/opt/{'binutils/bin','make/libexec/gnubin'} $path)
-  print -P -- ${(@)path}
+  path=( /opt/homebrew/opt/{binutils/bin,make/libexec/gnubin} $path )
+  export path
   # Configure git for tests
   git config --global user.email "test@example.com" 2>/dev/null || true
   git config --global user.name "Test User" 2>/dev/null || true
