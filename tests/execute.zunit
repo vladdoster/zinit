@@ -56,14 +56,14 @@
 }
 
 @test '+zi-execute with command that uses pipes' {
-  run +zi-execute echo "test" "|" grep "test"
+  run +zi-execute 'echo test | grep test'
   assert $output contains 'test'
   assert $state equals 0
 }
 
 @test '+zi-execute with command that uses variables' {
   TEST_VAR="test_value"
-  run +zi-execute echo '$TEST_VAR'
+  run +zi-execute echo "\$TEST_VAR"
   assert $output contains 'test_value'
   assert $state equals 0
 }

@@ -219,6 +219,8 @@ function $f {
 # FUNCTION: +zi-execute [[[
 # Execute command with optional silence flag
 # Usage: +zi-execute [--silent] command args...
+# Note: Uses eval to execute arbitrary commands - this is intentional
+# to support complex command strings with pipes, redirections, etc.
 +zi-execute() {
     builtin emulate -LR zsh ${=${options[xtrace]:#off}:+-o xtrace}
     setopt extendedglob warncreateglobal typesetsilent noshortloops
