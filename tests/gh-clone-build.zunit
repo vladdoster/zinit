@@ -12,8 +12,8 @@
   load "${PWD}/tests/_support/build_helpers"
   # Get the repository root
   typeset -gx GIT_REPO=$(git rev-parse --show-toplevel 2>/dev/null || echo "${PWD}")
-  typeset -gx TMPSUFFIX="${ZINIT[BIN_DIR]}/tests/_support/tmp"
-  mkdir -p "${TMPSUFFIX}"
+  typeset -gx TMPPREFIX="${ZINIT[BIN_DIR]}/tests/_support/tmp"
+  mkdir -p "${TMPPREFIX}"
   # Source the gh-clone-build function
   if [[ -n "${ZINIT[BIN_DIR]}" ]]; then
     source "${ZINIT[BIN_DIR]}/share/gh-clone-build.zsh"
