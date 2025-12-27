@@ -9,7 +9,7 @@
 # to support complex command strings with pipes, redirections, etc.
 +zi-execute() {
     builtin emulate -LR zsh ${=${options[xtrace]:#off}:+-o xtrace}
-    setopt extendedglob warncreateglobal typesetsilent noshortloops
+    setopt extendedglob NO_warncreateglobal typesetsilent noshortloops
     
     local -a o_silent
     zmodload zsh/zutil
@@ -321,13 +321,13 @@ gh-clone-build() {
                 if (( has_prefix )); then 
                     print -- "== Installing to custom prefix: $prefix_path"
                     {
-                        +zi-execute "make" "PREFIX=${prefix_path}" "install"
+                        +zi-execute 'make PREFIX=${prefix_path} install'
                     } || {
                         print "Error: make install failed" >&2
                         return 1
                     }
                 else
-                    { +zi-execute "make" "PREFIX=${prefix_path}" "install" } || {
+                    { +zi-execute 'make PREFIX=${prefix_path} install' } || {
                         print "Error: make install failed" >&2
                         return 1
                     }
