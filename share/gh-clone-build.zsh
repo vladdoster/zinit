@@ -6,7 +6,7 @@ run_silent() {
     builtin emulate -LR zsh
     setopt extendedglob warncreateglobal typesetsilent noshortloops
     typeset cmd
-    cmd="${@[1]} ${(Dq)@[2,-1]}"
+    cmd="${@[1]} ${(D)@[2,-1]}"
     (( verbose )) || {
         local silent=""
         cmd+=" >/dev/null 2>&1"
