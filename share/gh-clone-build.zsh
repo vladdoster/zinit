@@ -25,7 +25,8 @@
     
     # Combine all remaining arguments into a single command string
     local cmd="$*"
-    
+
+    +zi-log "{ice}Executing:{rst} $cmd"
     # Execute the command
     if (( $#o_silent )); then
         # Silent mode: suppress output
@@ -126,7 +127,6 @@ gh-clone-build() {
         print -l -- ${usage}
         return 1
     fi
-
 
     # Create temporary directory for cloning
     clone_dir=${ZINIT[PLUGINS_DIR]}
@@ -262,7 +262,7 @@ gh-clone-build() {
             if [[ ! -f configure ]]; then
                 if [[ -f autogen.sh ]]; then
                     (( verbose )) && print -- "== running autogen.sh..."
-                    { +zi-execute 'sh' './autogen.sh' } || {
+                    { +zi-execute 'sh ./autogen.sh' } || {
                         print "Error: autogen.sh failed" >&2
                         return 1
                     }
@@ -277,8 +277,11 @@ gh-clone-build() {
                     return 1
                 fi
             fi
-            print -- "== running ./configure --prefix=${prefix_path}..."
-            { +zi-execute './configure --prefix=${prefix_path}' } || {
+
+            { 
+                +zi-log "== running {ice}./configure --prefix=${prefix_path}{rst}..."
+                +zi-execute "./configure --prefix=${prefix_path}"
+            } || {
                 print "Error: configure failed" >&2
                 return 1
             }
@@ -292,7 +295,7 @@ gh-clone-build() {
             local valid_makefile_names="(GNU|)[mM]akefile"
             makefile_name=$~valid_makefile_names
             local -a makefiles=(*[mM]akefile(NY1)) 
-            print ${makefiles}
+            +zi-log "== found ${#makefiles} Makefiles: {ice}${makefiles}{rst}"
             if [[ -n $makefile_name ]]; then
                 has_install=1
                 has_prefix=1
@@ -305,36 +308,38 @@ gh-clone-build() {
             if (( has_prefix )); then
                 if (( has_prefix )); then
                     { 
-                        +zi-execute 'make PREFIX=${prefix_path}' 
+                        +zi-execute -s "make PREFIX=${prefix_path}" 
                     } || {
                         print "Error: make build failed" >&2
                         return 1
                     }
                 else
                     {
-                        +zi-execute 'make' 
+                        +zi-execute -s "make PREFIX=${ZPFX:-${ZINIT[HOME_DIR]}/polaris}"
                     } || {
                         print "Error: make build failed" >&2
                         return 1
                     }
                 fi
                 if (( has_prefix )); then 
-                    print -- "== Installing to custom prefix: $prefix_path"
                     {
-                        +zi-execute 'make PREFIX=${prefix_path} install'
+                        print -- "== Installing to custom prefix: ${(D)prefix_path}"
+                        +zi-execute "make PREFIX=${prefix_path} install"
                     } || {
                         print "Error: make install failed" >&2
                         return 1
                     }
                 else
-                    { +zi-execute 'make PREFIX=${prefix_path} install' } || {
+                    { +zi-execute "make PREFIX=${prefix_path} install" } || {
                         print "Error: make install failed" >&2
                         return 1
                     }
                 fi
             else
-                print -- "== No install target, just build"
-                { +zi-execute 'make PREFIX=${prefix_path}' } || {
+                { 
+                    print -- "== No install target, just build"
+                    +zi-execute "make PREFIX=${prefix_path}" 
+                } || {
                     print "Error: make build failed" >&2
                     return 1
                 }
