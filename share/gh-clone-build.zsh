@@ -24,7 +24,7 @@
     fi
     
     # Combine all remaining arguments into a single command string
-    local cmd="$*"
+    local -a cmd=( ${(q)*} )
     
     # Log the command that will be executed
     +zi-log "{ice}Executing:{rst} ${(q)cmd[@]}"
@@ -32,10 +32,10 @@
     # Execute the command
     if (( $#o_silent )); then
         # Silent mode: suppress output
-        eval "${(q)cmd[@]}" &>/dev/null
+        eval "${(q-)cmd[@]}" &>/dev/null
     else
         # Normal mode: show output
-        eval "${(q)cmd[@]}"
+        eval "${(q-)cmd[@]}"
     fi
     
     # Return the exit status of the command
