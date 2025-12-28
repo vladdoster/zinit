@@ -50,6 +50,20 @@ jobs:
         id: setup-homebrew
         uses: Homebrew/actions/setup-homebrew@master
 
+      - name: Cache Homebrew Bundler RubyGems
+        id: cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ steps.set-up-homebrew.outputs.repository-path }}
+          key: ${{ runner.os }}-repository-${{ hashFiles('/opt/homebrew/Cellar/*') }}
+          restore-keys: ${{ runner.os }}-repository-
+
+      - name: Install Homebrew
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          brew install --force --overwrite autoconf automake binutils byacc coreutils curl gettext gnu-sed libevent libtool libuv lua lua@5.4 make ncurses ninja parallel pkg-config texinfo unzip xz zsh
+          brew link --force --overwrite ncurses
+          
       - name: "install musl"
         if: runner.os == 'Linux'
         run: |
@@ -65,14 +79,6 @@ jobs:
             pkg-config \
             xz-utils \
             zsh
-
-      - name: "install dependencies"
-        id: install-deps
-        env:
-          HOMEBREW_NO_ENV_HINTS: 1
-        run: |
-          brew install --force --overwrite autoconf automake binutils byacc coreutils curl gettext gnu-sed libevent libtool libuv lua lua@5.4 make ncurses ninja parallel pkg-config texinfo unzip xz zsh
-          brew link --force --overwrite ncurses
 
       - name: "install zunit"
         id: install-zunit
