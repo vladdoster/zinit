@@ -70,3 +70,29 @@
   assert $output contains 'test_value'
   assert $state equals 0
 }
+
+@test '+zi-execute with environment variable assignment' {
+  run +zi-execute PREFIX=/usr/local printenv PREFIX
+  assert $output contains '/usr/local'
+  assert $state equals 0
+}
+
+@test '+zi-execute with variable expansion in assignment' {
+  custom_prefix="/my/custom/path"
+  run +zi-execute PREFIX="${custom_prefix}" printenv PREFIX
+  assert $output contains '/my/custom/path'
+  assert $state equals 0
+}
+
+@test '+zi-execute with braces in value' {
+  run +zi-execute PATH_VAR="/path/{a,b,c}/end" printenv PATH_VAR
+  assert $output contains '/path/{a,b,c}/end'
+  assert $state equals 0
+}
+
+@test '+zi-execute with complex variable syntax' {
+  my_base="/opt"
+  run +zi-execute INSTALL_DIR="\${my_base}/myapp" printenv INSTALL_DIR
+  assert $output contains '/opt/myapp'
+  assert $state equals 0
+}
