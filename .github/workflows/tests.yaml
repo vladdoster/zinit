@@ -51,8 +51,10 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: |
-            /home/linuxbrew
-            /opt/homebrew
+            /home/linuxbrew/.linuxbrew/opt
+            /home/linuxbrew/.linuxbrew/Cellar
+            /opt/homebrew/opt
+            /opt/homebrew/Cellar
           key: ${{ runner.os }}-homebrew
         
       - name: install homebrew
@@ -70,8 +72,10 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: |
-            /home/linuxbrew
-            /opt/homebrew
+            /home/linuxbrew/.linuxbrew/opt
+            /home/linuxbrew/.linuxbrew/Cellar
+            /opt/homebrew/opt
+            /opt/homebrew/Cellar
           key: ${{ steps.cache-brew-restore.outputs.cache-primary-key }}
 
       - name: "install musl"
