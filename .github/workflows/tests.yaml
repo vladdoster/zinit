@@ -44,26 +44,34 @@ jobs:
       - name: checkout ${{ github.repository }}
         uses: actions/checkout@v6
         with:
-          fetch-depth: 0
-
+          fetch-depth: 0  
+          
+      - name: Restore cached Primes
+        id: cache-brew-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+           /opt/homebrew
+          key: ${{ runner.os }}-homebrew
+        
       - name: install homebrew
         id: setup-homebrew
         uses: Homebrew/actions/setup-homebrew@master
-
-      - name: Cache Homebrew Bundler RubyGems
-        id: cache
-        uses: actions/cache@v3
-        with:
-          path: ${{ steps.set-up-homebrew.outputs.repository-path }}
-          key: ${{ runner.os }}-repository-${{ hashFiles('/opt/homebrew/Cellar/*') }}
-          restore-keys: ${{ runner.os }}-repository-
 
       - name: Install Homebrew
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
           brew install --force --overwrite autoconf automake binutils byacc coreutils curl gettext gnu-sed libevent libtool libuv lua lua@5.4 make ncurses ninja parallel pkg-config texinfo unzip xz zsh
           brew link --force --overwrite ncurses
-          
+
+      - name: Save Primes
+        id: cache-primes-save
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            /opt/homebrew
+          key: ${{ steps.cache-brew-restore.outputs.cache-primary-key }}
+
       - name: "install musl"
         if: runner.os == 'Linux'
         run: |
