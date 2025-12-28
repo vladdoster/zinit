@@ -30,7 +30,7 @@
     +zi-log "{ice}Executing:{rst} ${(q)cmd[@]}"
     
     # Execute the command
-    if (( $#o_silent )); then
+    if (( $#o_silent==0 )); then
         # Silent mode: suppress output
         eval "${(q-)cmd[@]}" &>/dev/null
     else
@@ -196,7 +196,7 @@ gh-clone-build() {
     if [[ -f CMakeLists.txt ]]; then
         build_system="cmake"
         (( verbose )) && print -- "== Detected CMake build system"
-    elif [[ ( -f configure.(in|ac) || -f configure ) ]]; then
+    elif [[ ( -f configure.(in|ac) || -f configure ) ]] && [[ -z Makefile*(#qN) ]]; then
         build_system="autotools"
         (( verbose )) && print -- "== Detected Autotools build system"
     elif [[ -n Makefile*(#qN) ]]; then
@@ -307,14 +307,14 @@ gh-clone-build() {
             if (( has_prefix )); then
                 if (( has_prefix )); then
                     { 
-                        +zi-execute make PREFIX="$prefix_path"
+                        +zi-execute PREFIX="$prefix_path" make
                     } || {
                         print "Error: make build failed" >&2
                         return 1
                     }
                 else
                     {
-                        +zi-execute make PREFIX="$prefix_path"
+                        +zi-execute PREFIX="$prefix_path" make
                     } || {
                         print "Error: make build failed" >&2
                         return 1
@@ -323,13 +323,13 @@ gh-clone-build() {
                 if (( has_prefix )); then 
                     {
                         print -- "== Installing to custom prefix: ${(D)prefix_path}"
-                        +zi-execute make PREFIX="$prefix_path" install
+                        +zi-execute PREFIX="$prefix_path" make install
                     } || {
                         print "Error: make install failed" >&2
                         return 1
                     }
                 else
-                    { +zi-execute make PREFIX=$prefix_path install } || {
+                    { +zi-execute PREFIX="$prefix_path" make install } || {
                         print "Error: make install failed" >&2
                         return 1
                     }
