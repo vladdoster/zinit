@@ -8,33 +8,49 @@
 # Note: Uses eval to execute arbitrary commands - this is intentional
 # to support complex command strings with pipes, redirections, etc.
 +zi-execute() {
-    builtin emulate -LR zsh ${=${options[xtrace]:#off}:+-o xtrace}
-    setopt extendedglob NO_warncreateglobal typesetsilent
-    
-    local -a o_silent
-    zmodload zsh/zutil
-    zparseopts -D -F -K -- \
-        {s,-silent}=o_silent \
-    || return 1
+  builtin emulate -LR zsh ${=${options[xtrace]:#off}:+-o xtrace}
+  zmodload zsh/zutil || return
+
+  # Default option values can be specified as (value).
+  local help silent message file=(default)
+
+  # Brace expansions are great for specifying short and long
+  # option names without duplicating any information.
+  zparseopts -D -F -K -- \
+    {h,-help}=help       \
+    {s,-silent}=silent \
+    {f,-file}:=file || return
+
+  if (( $#help )); then
+    print -rC1 --      \
+      "$0 [-h|--help]" \
+      "$0 [-s|--silent] [-f|--file=<file>] [<message...>]"
+    return
+  fi
+
+  # Presence of options can be checked via (( $#option )).
+  if (( $#silent )); then
+    print silent
+  fi
     
     # Check if we have any arguments left
-    if (( $# == 0 )); then
+  if (( $# == 0 )); then
         print -u2 "Error: No command specified"
         return 1
-    fi
-    
-    # Combine all remaining arguments into a single command string
-    local -a cmd=( ${(Q)${argv[1]}} ${(DS)${argv[2,-1]}} )
-    +zi-log "{ice}Executing:{rst} ${(qq)cmd[@]}"
-    # Execute the command
-    if (( ! $#o_silent )); then
+  fi
+
+  # Values of options can be retrieved through $option[-1].
+  print -r -- "file: ${(q+)file[-1]}"
+  +zi-log "{ice}Executing:{rst} "${(q+)^@}
+  # Positional arguments are in $@.
+  print -rC1 -- "message: "${(q+)^@}
+    if (( $#silent )); then
         # Silent mode: suppress output
-        eval "$(${(q)cmd})" &>/dev/null
+        eval ${(q+)^@} &>/dev/null
     else
         # Normal mode: show output
-        eval "$(${(q)cmd})"
+        eval ${(q+)^@}
     fi
-    
     # Return the exit status of the command
     return $?
 } 
