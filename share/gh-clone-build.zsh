@@ -7,54 +7,40 @@
 # Usage: +zi-execute [--silent] command args...
 # Note: Uses eval to execute arbitrary commands - this is intentional
 # to support complex command strings with pipes, redirections, etc.
-+zi-execute() {
-  builtin emulate -LR zsh ${=${options[xtrace]:#off}:+-o xtrace}
-  zmodload zsh/zutil || return
-
-  # Default option values can be specified as (value).
-  local help silent message file=(default)
-
-  # Brace expansions are great for specifying short and long
-  # option names without duplicating any information.
-  zparseopts -D -F -K -- \
-    {h,-help}=help       \
-    {s,-silent}=silent \
-    {f,-file}:=file || return
-
-  if (( $#help )); then
-    print -rC1 --      \
-      "$0 [-h|--help]" \
-      "$0 [-s|--silent] [-f|--file=<file>] [<message...>]"
-    return
-  fi
-
-  # Presence of options can be checked via (( $#option )).
-  if (( $#silent )); then
-    print silent
-  fi
+zi-execute() {
+    builtin emulate -LR zsh ${=${options[xtrace]:#off}:+-o xtrace}
+    setopt extendedglob warncreateglobal typesetsilent noshortloops
+    
+    local -a o_silent
+    zmodload zsh/zutil
+    zparseopts -D -F -K -- \
+        {s,-silent}=o_silent \
+    || return 1
     
     # Check if we have any arguments left
-  if (( $# == 0 )); then
+    if (( $# == 0 )); then
         print -u2 "Error: No command specified"
         return 1
-  fi
-
-  # Values of options can be retrieved through $option[-1].
-  +zi-log "{ice}Executing:{rst} ${(Q)${(j: :)*}}"
-  # Positional arguments are in $@.
-  print -rC1 -- "message: ${(qj: :)*}"
-  print -rC1 -- "message: "${(j: :)"${(q)*}"}
-    if (( $#silent )); then
+    fi
+    
+    # Combine all remaining arguments into a single command string
+    local cmd="$*"
+    
+    # Log the command that will be executed
+    +zi-log "{ice}Executing:{rst} $cmd"
+    
+    # Execute the command
+    if (( $#o_silent )); then
         # Silent mode: suppress output
-        eval "${(Q)${(j: :)*}}" &>/dev/null
+        eval "$cmd" &>/dev/null
     else
         # Normal mode: show output
-        eval "${(Q)${(j: :)*}}"
+        eval "$cmd"
     fi
+    
     # Return the exit status of the command
     return $?
-} 
-# ]]]
+} # ]]]
 
 # FUNCTION: gh-clone-build [[[
 # Clone a GitHub repository, detect build system (make, cmake, or autotools),
@@ -211,7 +197,7 @@ gh-clone-build() {
     if [[ -f CMakeLists.txt ]]; then
         build_system="cmake"
         (( verbose )) && print -- "== Detected CMake build system"
-    elif [[ ( -f configure.(in|ac) || -f configure ) ]] && [[ -z Makefile*(#qN) ]]; then
+    elif [[ ( -f configure.(in|ac) || -f configure ) ]]; then
         build_system="autotools"
         (( verbose )) && print -- "== Detected Autotools build system"
     elif [[ -n Makefile*(#qN) ]]; then
@@ -277,13 +263,13 @@ gh-clone-build() {
             if [[ ! -f configure ]]; then
                 if [[ -f autogen.sh ]]; then
                     (( verbose )) && print -- "== running autogen.sh..."
-                    { +zi-execute 'sh' './autogen.sh' } || {
+                    { +zi-execute sh ./autogen.sh } || {
                         print "Error: autogen.sh failed" >&2
                         return 1
                     }
                 elif command -v autoreconf >/dev/null 2>&1; then
                     (( verbose )) && print -- "== running autoreconf..."
-                    { +zi-execute 'autoreconf' '-i' } || {
+                    { +zi-execute autoreconf -i } || {
                         print "Error: autoreconf failed" >&2
                         return 1
                     }
@@ -295,7 +281,7 @@ gh-clone-build() {
 
             { 
                 +zi-log "== running {ice}./configure --prefix=${prefix_path}{rst}..."
-                +zi-execute "./configure" "--prefix=${prefix_path}"
+                +zi-execute "./configure" --prefix="${prefix_path}"
             } || {
                 print "Error: configure failed" >&2
                 return 1
@@ -322,14 +308,14 @@ gh-clone-build() {
             if (( has_prefix )); then
                 if (( has_prefix )); then
                     { 
-                        +zi-execute 'make' PREFIX=$prefix_path
+                        +zi-execute make PREFIX="$prefix_path"
                     } || {
                         print "Error: make build failed" >&2
                         return 1
                     }
                 else
                     {
-                        +zi-execute 'make' PREFIX=$prefix_path
+                        +zi-execute make PREFIX="$prefix_path"
                     } || {
                         print "Error: make build failed" >&2
                         return 1
@@ -338,13 +324,13 @@ gh-clone-build() {
                 if (( has_prefix )); then 
                     {
                         print -- "== Installing to custom prefix: ${(D)prefix_path}"
-                        +zi-execute "make" PREFIX=$prefix_path 'install'
+                        +zi-execute make PREFIX="$prefix_path" install
                     } || {
                         print "Error: make install failed" >&2
                         return 1
                     }
                 else
-                    { +zi-execute "make" PREFIX=$prefix_path 'install' } || {
+                    { +zi-execute make PREFIX=$prefix_path install } || {
                         print "Error: make install failed" >&2
                         return 1
                     }
@@ -352,7 +338,7 @@ gh-clone-build() {
             else
                 { 
                     print -- "== No install target, just build"
-                    +zi-execute "make" "PREFIX=${prefix_path}" 
+                    +zi-execute make PREFIX="${prefix_path}" 
                 } || {
                     print "Error: make build failed" >&2
                     return 1
