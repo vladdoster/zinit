@@ -120,7 +120,6 @@ gh-clone-build() {
         prefix_path="${ZINIT[HOME_DIR]}/polaris"
         mkdir -p $prefix_path
     fi
-    prefix_path="${ZINIT[HOME_DIR]}"
 
     # Check if repository argument is provided
     if (( $# == 0 )); then
