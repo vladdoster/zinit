@@ -40,16 +40,15 @@
   fi
 
   # Values of options can be retrieved through $option[-1].
-  print -r -- "file: ${(q+)file[-1]}"
   +zi-log "{ice}Executing:{rst} ${(q)@}"
   # Positional arguments are in $@.
   print -rC1 -- "message: ${(q)@}"
     if (( $#silent )); then
         # Silent mode: suppress output
-        eval ${(q)@} &>/dev/null
+        eval "${(q)${@}}" &>/dev/null
     else
         # Normal mode: show output
-        eval ${(q)@}
+        eval "${(q)${@}}"
     fi
     # Return the exit status of the command
     return $?
@@ -322,14 +321,14 @@ gh-clone-build() {
             if (( has_prefix )); then
                 if (( has_prefix )); then
                     { 
-                        +zi-execute 'make' "PREFIX=$prefix_path" 
+                        +zi-execute 'make' PREFIX=$prefix_path
                     } || {
                         print "Error: make build failed" >&2
                         return 1
                     }
                 else
                     {
-                        +zi-execute 'make' "PREFIX=$prefix_path"
+                        +zi-execute 'make' PREFIX=$prefix_path
                     } || {
                         print "Error: make build failed" >&2
                         return 1
@@ -338,13 +337,13 @@ gh-clone-build() {
                 if (( has_prefix )); then 
                     {
                         print -- "== Installing to custom prefix: ${(D)prefix_path}"
-                        +zi-execute "make" "PREFIX=$prefix_path" 'install'
+                        +zi-execute "make" PREFIX=$prefix_path 'install'
                     } || {
                         print "Error: make install failed" >&2
                         return 1
                     }
                 else
-                    { +zi-execute "make" "PREFIX=$prefix_path" 'install' } || {
+                    { +zi-execute "make" PREFIX=$prefix_path 'install' } || {
                         print "Error: make install failed" >&2
                         return 1
                     }
