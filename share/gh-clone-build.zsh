@@ -262,7 +262,7 @@ gh-clone-build() {
             if [[ ! -f configure ]]; then
                 if [[ -f autogen.sh ]]; then
                     (( verbose )) && print -- "== running autogen.sh..."
-                    { +zi-execute sh ./autogen.sh } || {
+                    { +zi-execute ./autogen.sh } || {
                         print "Error: autogen.sh failed" >&2
                         return 1
                     }
@@ -280,7 +280,7 @@ gh-clone-build() {
 
             { 
                 +zi-log "== running {ice}./configure --prefix=${prefix_path}{rst}..."
-                +zi-execute "./configure" --prefix="${prefix_path}"
+                +zi-execute ./configure --prefix="$prefix_path"
             } || {
                 print "Error: configure failed" >&2
                 return 1
