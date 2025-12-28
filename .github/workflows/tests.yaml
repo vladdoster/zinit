@@ -55,7 +55,7 @@ jobs:
             /home/linuxbrew/.linuxbrew/Cellar
             /opt/homebrew/opt
             /opt/homebrew/Cellar
-          key: ${{ runner.os }}-homebrew
+          key: ${{ runner.os }}-${{ hashFiles('.github/workflows/*') }} 
         
       - name: install homebrew
         id: setup-homebrew
