@@ -27,12 +27,12 @@
     local -a cmd=( ${(Q)${argv[1]}} ${argv[2,-1]} )
     +zi-log "{ice}Executing:{rst} ${(@)cmd}"
     # Execute the command
-    if (( $#o_silent )); then
+    if ! (( $#o_silent )); then
         # Silent mode: suppress output
-        eval "${(q)cmd}" &>/dev/null
+        eval ${cmd} &>/dev/null
     else
         # Normal mode: show output
-        eval ${(q)cmd}
+        eval ${cmd}
     fi
     
     # Return the exit status of the command
