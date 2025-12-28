@@ -24,7 +24,7 @@
     fi
     
     # Combine all remaining arguments into a single command string
-    local -a cmd=( ${(Q)${argv[1]}} ${(Dq)${argv[2,-1]}} )
+    local -a cmd=( ${(Q)${argv[1]}} ${(DS)${argv[2,-1]}} )
     +zi-log "{ice}Executing:{rst} ${(qq)cmd[@]}"
     # Execute the command
     if (( ! $#o_silent )); then
