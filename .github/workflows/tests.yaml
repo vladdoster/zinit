@@ -51,7 +51,8 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: |
-           /opt/homebrew
+            /home/linuxbrew
+            /opt/homebrew
           key: ${{ runner.os }}-homebrew
         
       - name: install homebrew
@@ -69,6 +70,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: |
+            /home/linuxbrew
             /opt/homebrew
           key: ${{ steps.cache-brew-restore.outputs.cache-primary-key }}
 
