@@ -216,4 +216,44 @@ function $f {
     fi
 } # ]]]
 
+# FUNCTION: +zi-execute [[[
+# Execute command with optional silence flag
+# Usage: +zi-execute [--silent] command args...
+# Note: Uses eval to execute arbitrary commands - this is intentional
+# to support complex command strings with pipes, redirections, etc.
++zi-execute() {
+    builtin emulate -LR zsh ${=${options[xtrace]:#off}:+-o xtrace}
+    setopt extendedglob warncreateglobal typesetsilent noshortloops
+    
+    local -a o_silent
+    zmodload zsh/zutil
+    zparseopts -D -F -K -- \
+        {s,-silent}=o_silent \
+    || return 1
+    
+    # Check if we have any arguments left
+    if (( $# == 0 )); then
+        print -u2 "Error: No command specified"
+        return 1
+    fi
+    
+    # Combine all remaining arguments into a single command string
+    local cmd="$*"
+    
+    # Log the command that will be executed
+    +zi-log "{ice}Executing:{rst} $cmd"
+    
+    # Execute the command
+    if (( $#o_silent )); then
+        # Silent mode: suppress output
+        eval "$cmd" &>/dev/null
+    else
+        # Normal mode: show output
+        eval "$cmd"
+    fi
+    
+    # Return the exit status of the command
+    return $?
+} # ]]]
+
 # vim: ft=zsh sw=4 ts=4 et foldmarker=[[[,]]] foldmethod=marker
