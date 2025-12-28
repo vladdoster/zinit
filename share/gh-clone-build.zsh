@@ -9,7 +9,7 @@
 # to support complex command strings with pipes, redirections, etc.
 +zi-execute() {
     builtin emulate -LR zsh ${=${options[xtrace]:#off}:+-o xtrace}
-    setopt extendedglob NO_warncreateglobal typesetsilent noshortloops
+    setopt extendedglob NO_warncreateglobal typesetsilent SH_WORD_SPLIT
     
     local -a o_silent
     zmodload zsh/zutil
@@ -24,15 +24,15 @@
     fi
     
     # Combine all remaining arguments into a single command string
-    local cmd="${(z)${(@)*}}"
+    local -a cmd=( ${(Q)${(z)@[1]}} ${argv[1,-1]}" )
     +zi-log "{ice}Executing:{rst} $cmd"
     # Execute the command
     if (( $#o_silent )); then
         # Silent mode: suppress output
-        eval "$cmd" &>/dev/null
+        eval "${(q)cmd}" &>/dev/null
     else
         # Normal mode: show output
-        eval "$cmd"
+        eval ${(q)cmd}
     fi
     
     # Return the exit status of the command
