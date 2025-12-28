@@ -68,6 +68,7 @@ jobs:
           brew link --force --overwrite ncurses
 
       - name: Save Primes
+        if: steps.cache.outputs.cache-hit == 'true'
         id: cache-primes-save
         uses: actions/cache/save@v4
         with:
