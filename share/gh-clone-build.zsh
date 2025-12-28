@@ -25,7 +25,7 @@
     
     # Combine all remaining arguments into a single command string
     local -a cmd=( ${(Q)${argv[1]}} ${argv[2,-1]} )
-    +zi-log "{ice}Executing:{rst} ${(@)cmd}"
+    +zi-log "{ice}Executing:{rst} ${(qq)cmd[@]}"
     # Execute the command
     if ! (( $#o_silent )); then
         # Silent mode: suppress output
