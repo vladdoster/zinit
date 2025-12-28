@@ -40,9 +40,10 @@
   fi
 
   # Values of options can be retrieved through $option[-1].
-  +zi-log "{ice}Executing:{rst} ${(Q)${*})
+  +zi-log "{ice}Executing:{rst} ${(q)"${(j: :)*}"}"
   # Positional arguments are in $@.
-  print -rC1 -- "message: ${(Q)*}"
+  print -rC1 -- "message: ${(qj: :)*}"
+  print -rC1 -- "message: ${(j: :)"${(q)*}"}
     if (( $#silent )); then
         # Silent mode: suppress output
         eval "() { ${(Q)"${*}"} }" &>/dev/null
