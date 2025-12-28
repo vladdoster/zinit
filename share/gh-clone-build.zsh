@@ -27,15 +27,15 @@
     local cmd="$*"
     
     # Log the command that will be executed
-    +zi-log "{ice}Executing:{rst} $cmd"
+    +zi-log "{ice}Executing:{rst} ${(q)cmd[@]}"
     
     # Execute the command
     if (( $#o_silent )); then
         # Silent mode: suppress output
-        eval "$cmd" &>/dev/null
+        eval "${(q)cmd[@]}" &>/dev/null
     else
         # Normal mode: show output
-        eval "$cmd"
+        eval "${(q)cmd[@]}"
     fi
     
     # Return the exit status of the command
