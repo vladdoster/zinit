@@ -1,17 +1,16 @@
 #!/usr/bin/env zsh
 
-# emulate -L zsh
-# setopt no_global_rcs no_rcs no_aliases extended_glob null_glob
-
 emulate zsh
 setopt no_global_rcs no_rcs no_aliases extended_glob
 
 # Log functions [[[
-function error(){ print -P "%F{red}[ERROR]%f: ${1}" && return 1; }
+function error(){ print -P "%F{red}[ERROR]%f: ${1}" && exit 1; }
 function info() { print -P "%F{green}[INFO]%f:%F{cyan} ${1} %f"; }
 function warn() { print -P "%F{yellow}[WARN]%f: ${1}"; }
 # ]]]
+
 # Create Zunit test environment [[[
+
 GIT_REPO=$(git rev-parse --show-toplevel)
 
 _mktemp_cmd='mktemp'
@@ -60,23 +59,28 @@ if [[ -s $ZINIT[HOME_DIR]/unstaged.diff ]]; then
 fi
 (( $? != 0 )) && { error "Unable to copy ${GIT_REPO} to ${TMP_ZUNIT}" >&2; exit 1 }
 
+
 hash -f
-builtin hash -d zinit="${zi_test_dir}"
-builtin hash -d zpfx="${zi_test_dir}/polaris"
-builtin hash -d plugins="${zi_test_dir}/plugins"
-source "${zi_test_dir}/zinit.git/zinit.zsh"
-(( $? != 0 )) && { error "Unable to source zinit" >&2; exit 1 }
+builtin hash -d zinit=${zi_test_dir}
+builtin hash -d zpfx=${zi_test_dir}/polaris
+builtin hash -d plugins=${zi_test_dir}/plugins
+source "${zi_test_dir}"/zinit.git/zinit.zsh
+(( $? == 0 )) || {
+  error "Unable to source zinit" >&2
+}
 hash -f
-builtin hash -d zinit="${zi_test_dir}"
-builtin hash -d zpfx="${zi_test_dir}/polaris"
-builtin hash -d plugins="${zi_test_dir}/plugins"
+builtin hash -d zinit=${zi_test_dir}
+builtin hash -d zpfx=${zi_test_dir}/polaris
+builtin hash -d plugins=${zi_test_dir}/plugins
 
 {
+  local zinit_annex='zdharma-continuum/zinit-annex'
   zinit for \
-    @zdharma-continuum/zinit-annex-bin-gem-node \
-    @zdharma-continuum/zinit-annex-binary-symlink \
-    @zdharma-continuum/zinit-annex-default-ice \
-    @zdharma-continuum/zinit-annex-linkman
-}>/dev/null
+    @${zinit_annex}-bin-gem-node \
+    @${zinit_annex}-binary-symlink \
+    @${zinit_annex}-default-ice \
+    @${zinit_annex}-linkman
+} >/dev/null
 
-zinit zstatus 
++zi-log "{m} loaded $annex dependencies"
+zinit zstatus

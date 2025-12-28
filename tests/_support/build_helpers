@@ -1,0 +1,60 @@
+#!/usr/bin/env zsh
+
+_create_test_make_project() {
+  local project_dir="$1"
+  mkdir -p "$project_dir"
+  cd "$project_dir"
+  
+  # Initialize git repo
+  git init -q
+  git config user.email "test@example.com"
+  git config user.name "Test User"
+  
+  # Create a simple C file
+  cat > main.c << 'EOF'
+#include <stdio.h>
+int main() {
+    printf("Test app\n");
+    return 0;
+}
+EOF
+  
+  # Create a Makefile with tabs (using printf)
+  printf 'PREFIX ?= /usr/local\nCC = gcc\nCFLAGS = -Wall -O2\n\nall: test-app\n\ntest-app: main.c\n\t$(CC) $(CFLAGS) -o test-app main.c\n\ninstall: test-app\n\tmkdir -p $(PREFIX)/bin\n\tcp test-app $(PREFIX)/bin/\n\nclean:\n\trm -f test-app\n\n.PHONY: all install clean\n' > Makefile
+  
+  git add .
+  git commit -q -m "Initial commit"
+}
+
+# Helper function to create a test cmake project
+_create_test_cmake_project() {
+  local project_dir="$1"
+  mkdir -p "$project_dir"
+  cd "$project_dir"
+  
+  # Initialize git repo
+  git init -q
+  git config user.email "test@example.com"
+  git config user.name "Test User"
+  
+  # Create a simple C++ file
+  cat > main.cpp << 'EOF'
+#include <iostream>
+int main() {
+    std::cout << "Test CMake app" << std::endl;
+    return 0;
+}
+EOF
+  
+  # Create CMakeLists.txt
+  cat > CMakeLists.txt << 'EOF'
+cmake_minimum_required(VERSION 3.10)
+project(TestCMakeApp)
+set(CMAKE_CXX_STANDARD 11)
+add_executable(test-cmake-app main.cpp)
+install(TARGETS test-cmake-app DESTINATION bin)
+EOF
+  
+  git add .
+  git commit -q -m "Initial commit"
+}
