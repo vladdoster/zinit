@@ -43,13 +43,13 @@
   print -r -- "file: ${(q+)file[-1]}"
   +zi-log "{ice}Executing:{rst} ${(q)@}"
   # Positional arguments are in $@.
-  print -rC1 -- "message: ${(q-)@}"
+  print -rC1 -- "message: ${(q)@}"
     if (( $#silent )); then
         # Silent mode: suppress output
-        eval ${(q-)@} &>/dev/null
+        eval ${(q)@} &>/dev/null
     else
         # Normal mode: show output
-        eval ${(q-)@}
+        eval ${(q)@}
     fi
     # Return the exit status of the command
     return $?
