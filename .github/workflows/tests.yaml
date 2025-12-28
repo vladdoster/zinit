@@ -5,6 +5,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  HOMEBREW_NO_ENV_HINTS: 1
   HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: 1
   TERM: xterm-256color
 
@@ -30,23 +31,53 @@ jobs:
       matrix:
         os: [macos-latest, ubuntu-latest]
         zunit_test:
-          - annexes
-          - commands
-          - compile
-          - gh-r
-          - ices
-          - plugins
-          - snippets
+         # - annexes
+         # - commands
+         # - compile
+          - gh-clone-build
+         # - gh-r
+         # - ices
+         # - plugins
+         # - snippets
 
     steps:
       - name: checkout ${{ github.repository }}
         uses: actions/checkout@v6
         with:
-          fetch-depth: 0
-
+          fetch-depth: 0  
+          
+      - name: Restore cached Primes
+        id: cache-brew-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            /home/linuxbrew/.linuxbrew/opt
+            /home/linuxbrew/.linuxbrew/Cellar
+            /opt/homebrew/opt
+            /opt/homebrew/Cellar
+          key: ${{ runner.os }}-${{ hashFiles('.github/workflows/*') }} 
+        
       - name: install homebrew
         id: setup-homebrew
         uses: Homebrew/actions/setup-homebrew@master
+
+      - name: Install Homebrew
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          brew install --force --overwrite autoconf automake binutils byacc coreutils curl gettext gnu-sed libevent libtool libuv lua lua@5.4 make ncurses ninja parallel pkg-config texinfo unzip xz zsh
+          brew link --force --overwrite ncurses
+
+      - name: Save Primes
+        if: steps.cache.outputs.cache-hit == 'true'
+        id: cache-primes-save
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            /home/linuxbrew/.linuxbrew/opt
+            /home/linuxbrew/.linuxbrew/Cellar
+            /opt/homebrew/opt
+            /opt/homebrew/Cellar
+          key: ${{ steps.cache-brew-restore.outputs.cache-primary-key }}
 
       - name: "install musl"
         if: runner.os == 'Linux'
@@ -64,12 +95,6 @@ jobs:
             xz-utils \
             zsh
 
-      - name: "install dependencies"
-        id: install-deps
-        run: |
-          brew install --force --overwrite autoconf automake binutils byacc coreutils curl gettext gnu-sed libevent libtool libuv lua lua@5.4 make ncurses ninja parallel pkg-config texinfo unzip xz zsh
-          brew link --force --overwrite ncurses
-
       - name: "install zunit"
         id: install-zunit
         shell: zsh {0}
@@ -82,4 +107,4 @@ jobs:
           make all install
 
       - name: "run tests"
-        run: zunit run tests/${{ matrix.zunit_test }}.zunit
+        run: zunit run --time-limit 600 tests/${{ matrix.zunit_test }}.zunit

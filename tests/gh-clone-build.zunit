@@ -1,0 +1,335 @@
+#!/usr/bin/env zunit
+# vim:ft=zsh:sw=4:sts=4:et:foldmarker={,}:foldmethod=marker
+#
+# zdharma-continuum/zinit/tests/gh-clone-build.zunit
+# Copyright (c) 2025 Zinit contributors
+# Homepage: https://github.com/vladdoster/zinit
+# License: MIT License
+#
+# Tests for the gh-clone-build function
+
+@setup {
+  setopt extended_glob
+  load "${PWD}/tests/_support/build_helpers"
+  # Get the repository root
+  typeset -gx GIT_REPO=$(git rev-parse --show-toplevel 2>/dev/null || echo "${PWD}")
+  typeset -gx TMPPREFIX="${ZINIT[HOME_DIR]}/tmp"
+  export TMPPREFIX="${ZINIT[HOME_DIR]}/tmp"
+  mkdir -p $TMPPREFIX
+  chmod -R 777 $TMPPREFIX
+  {   
+    # Source the gh-clone-build function
+    local test_helper="${ZINIT[BIN_DIR]:-${GIT_REPO}}"
+    [[ -d ${ZINIT[BIN_DIR]} ]] && { test_helper=${ZINIT[BIN_DIR]} }
+  } always {
+    source ${test_helper}/share/gh-clone-build.zsh
+    print -- "sourced ${test_helper}/share/gh-clone-build.zsh"
+  }
+  
+  # Create a temporary directory for test repositories
+  typeset -gx TEST_REPO_DIR=$(mktemp -d)
+  
+  # Create a temporary install directory
+  typeset -gx TEST_INSTALL_DIR=$(mktemp -d)
+  path=( /opt/homebrew/opt/{binutils/bin,make/libexec/gnubin} $path )
+  export path
+  # Configure git for tests
+  git config --global user.email "test@example.com" 2>/dev/null || true
+  git config --global user.name "Test User" 2>/dev/null || true
+  typeset -gx ZBIN="${zi_test_dir}"/polaris/bin
+  if [[ ! -d $ZBIN ]]; then
+    mkdir -p "${ZBIN}"
+  fi
+  typeset -gx zpfx="$ZPFX"
+  #typeset -gx HOME="${zi_test_dir}"
+  export ZBIN
+  export zpfx=$ZPFX
+}
+
+# @teardown {
+  # Clean up test directories
+  # [[ -d "$TEST_REPO_DIR" ]] && rm -rf "$TEST_REPO_DIR"
+  # [[ -d "$TEST_INSTALL_DIR" ]] && rm -rf "$TEST_INSTALL_DIR"
+# }
+
+# Test help flag
+@test 'gh-clone-build --help' {
+  run gh-clone-build --help
+  assert $state equals 0
+  assert $output contains 'Usage:'
+  assert $output contains 'gh-clone-build [options] <repository>'
+  assert $output contains '-h, --help'
+  assert $output contains '-v, --verbose'
+  assert $output contains '-p, --prefix'
+}
+
+@test 'gh-clone-build -h' {
+  run gh-clone-build -h
+  assert $state equals 0
+  assert $output contains 'Usage:'
+  assert $output contains 'gh-clone-build [options] <repository>'
+}
+
+# Test error handling - no arguments
+@test 'gh-clone-build no arguments' {
+  run gh-clone-build
+  assert $state equals 1
+  assert $output contains 'Error: repository argument is required'
+}
+
+# Test error handling - invalid repository format
+@test 'gh-clone-build invalid format' {
+  run gh-clone-build invalid-format
+  assert $state equals 1
+  assert $output contains 'Error: Failed to enter repository directory'
+}
+
+# Test Make project detection and build
+@test 'gh-clone-build Make project' {
+  local test_make_repo="$TEST_REPO_DIR/test-make-repo"
+  _create_test_make_project "$test_make_repo"
+  
+  run gh-clone-build --prefix "$zpfx" "$test_make_repo"
+  assert $state equals 0
+  assert $output contains 'Detecting build system...'
+  assert $output contains 'Building with Make...'
+  assert $output contains 'Successfully completed!'
+  
+  # Verify installation
+  assert "${ZBIN}/test-app" exists
+}
+
+# Test Make vim project detection and build
+@test 'gh-clone-build vim' {
+  mkdir -p "$ZBIN"
+  run gh-clone-build --prefix "$zpfx" vim/vim;
+  assert $state equals 0
+  assert $output contains 'Detecting build system...'
+  assert $output contains 'Successfully completed!'
+
+  local binary="$ZBIN/vim"
+  assert "$binary" is_executable
+  assert "$binary" exists
+
+  run "$binary" --version;
+  assert $output contains 'vim'
+  assert $state equals 0
+}
+
+# Test Make neofetch project detection and build
+@test 'gh-clone-build neofetch project' {
+  mkdir -p "$ZBIN"
+  run gh-clone-build --prefix "$zpfx" dylanaraps/neofetch;
+  assert $state equals 0
+  assert $output contains 'Detecting build system...'
+  assert $output contains 'Successfully completed!'
+  
+  local binary="$ZBIN/neofetch"; 
+  assert "$binary" is_executable
+  assert "$binary" exists
+  
+  run "$binary" --version; 
+  assert $state equals 1; 
+  assert $output contains 'Neofetch'
+}
+
+# Test Make htop project detection and build
+@test 'gh-clone-build htop project' {
+  mkdir -p "$ZBIN"
+  run gh-clone-build -p "$zpfx" htop-dev/htop;
+  assert $state equals 0
+  assert $output contains 'Detecting build system...'
+  assert $output contains 'Successfully completed!'
+  
+  local binary="$ZBIN/htop"; 
+  assert "$binary" is_executable
+  assert "$binary" exists
+  
+  run "$binary" --version; 
+  assert $state equals 0; 
+  assert $output contains 'htop'
+}
+
+# Test Make coreutils/coreutils project detection and build
+#@test 'gh-clone-build coreutils/coreutils project' {
+#  run gh-clone-build --verbose -p "$TEST_INSTALL_DIR" "coreutils/coreutils"
+#  assert $state equals 0
+#  assert $output contains 'Detecting build system...'
+#  assert $output contains 'Successfully completed!'
+  
+# Verify installation
+#  assert "$TEST_INSTALL_DIR/bin/vim" exists
+#  run $TEST_INSTALL_DIR/bin/coreutils --version
+#  assert $state equals 0
+#}
+
+# Test Make luaformatter project detection and build
+#@test 'gh-clone-build luaformatter project' {
+#  run gh-clone-build --verbose --prefix "$ZPFX" "Koihik/LuaFormatter"
+#  assert $state equals 0
+#  assert $output contains 'Detecting build system...'
+#  assert $output contains 'Successfully completed!'
+  
+  # Verify installation
+#  assert "$ZPFX/bin/luaformat" exists
+#  run $ZPFX/bin/luaformat --version
+#  assert $state equals 0
+#}
+
+# Test Make project with verbose flag
+@test 'gh-clone-build Make project verbose' {
+  local test_make_repo="$TEST_REPO_DIR/test-make-repo-verbose"
+  _create_test_make_project "$test_make_repo"
+  
+  local install_dir="$TEST_INSTALL_DIR-verbose"
+  mkdir -p "$install_dir"
+  
+  run gh-clone-build -v -p "$install_dir" "$test_make_repo"
+  assert $state equals 0
+  assert $output contains 'Repository URL:'
+  assert $output contains 'Installation prefix:'
+  assert $output contains 'Clone directory:'
+  assert $output contains 'Detected Make build system'
+}
+
+# Test CMake project detection and build
+@test 'gh-clone-build CMake project' {
+  # Skip if cmake is not available
+  if ! command -v cmake >/dev/null 2>&1; then
+    skip "cmake not installed"
+  fi
+  
+  local test_cmake_repo="$TEST_REPO_DIR/test-cmake-repo"
+  _create_test_cmake_project "$test_cmake_repo"
+  
+  local install_dir="$TEST_INSTALL_DIR-cmake"
+  mkdir -p "$install_dir"
+  
+  run gh-clone-build -p "$install_dir" "$test_cmake_repo"
+  assert $state equals 0
+  assert $output contains 'Detecting build system...'
+  assert $output contains 'Configuring with CMake...'
+  assert $output contains 'Building with CMake...'
+  assert $output contains 'Successfully completed!'
+  
+  # Verify installation
+  assert "$install_dir/bin/test-cmake-app" exists
+}
+
+# Test short flags
+@test 'gh-clone-build short flags' {
+  local test_make_repo="$TEST_REPO_DIR/test-short-flags"
+  _create_test_make_project "$test_make_repo"
+  
+  local install_dir="$TEST_INSTALL_DIR-short"
+  mkdir -p "$install_dir"
+  
+  run gh-clone-build -p "$install_dir" "$test_make_repo"
+  assert $state equals 0
+  assert $output contains 'Successfully completed!'
+}
+
+# Test with home directory expansion
+@test 'gh-clone-build prefix with tilde' {
+  local test_make_repo="$TEST_REPO_DIR/test-tilde"
+  _create_test_make_project "$test_make_repo"
+  
+  # Create a test directory in HOME
+  local test_home_dir="${TEST_REPO_DIR}/test-home-install"
+  mkdir -p "$test_home_dir"
+  
+  # Use relative path from HOME
+  local old_home="$HOME"
+  export HOME="${TEST_REPO_DIR}"
+  
+  run gh-clone-build -p "~/test-home-install" "$test_make_repo"
+  
+  export HOME="$old_home"
+  
+  assert $state equals 0
+  assert $output contains 'Successfully completed!'
+  assert "$test_home_dir/bin/test-app" exists
+}
+
+# Test Makefile without install target
+@test 'gh-clone-build Makefile without install target' {
+  local project_dir="$TEST_REPO_DIR/no-install-target"
+  mkdir -p "$project_dir"
+  cd "$project_dir"
+  
+  git init -q
+  git config user.email "test@example.com"
+  git config user.name "Test User"
+  
+  # Create simple C file
+  cat > main.c << 'EOF'
+#include <stdio.h>
+int main() { return 0; }
+EOF
+  
+  # Create Makefile without install target
+  printf 'CC = gcc\n\nall: app\n\napp: main.c\n\t$(CC) -o app main.c\n' > Makefile
+  
+  git add .
+  git commit -q -m "Initial commit"
+  
+  local install_dir="$TEST_INSTALL_DIR-no-install"
+  mkdir -p "$install_dir"
+  
+  run gh-clone-build -p "$install_dir" "$project_dir"
+  assert $state equals 0
+  assert $output contains 'Warning: No install target found'
+}
+
+# Test error handling - non-existent repository
+@test 'gh-clone-build non-existent repo' {
+  run gh-clone-build -p "$TEST_INSTALL_DIR" "$TEST_REPO_DIR/non-existent"
+  assert $state equals 1
+  assert $output contains 'Error: Failed to enter repository directory'
+}
+
+# Test error handling - no build system detected
+@test 'gh-clone-build no build system' {
+  local project_dir="$TEST_REPO_DIR/no-build-system"
+  mkdir -p "$project_dir"
+  cd "$project_dir"
+  
+  git init -q
+  git config user.email "test@example.com"
+  git config user.name "Test User"
+  
+  # Create a file but no build system files
+  echo "README" > README.md
+  git add .
+  git commit -q -m "Initial commit"
+  
+  local install_dir="$TEST_INSTALL_DIR-no-build"
+  mkdir -p "$install_dir"
+  
+  run gh-clone-build -p "$install_dir" "$project_dir"
+  assert $state equals 1
+  assert $output contains 'Error: Could not detect build system'
+}
+
+# Test GNUmakefile support
+@test 'gh-clone-build GNUmakefile' {
+  local project_dir="$TEST_REPO_DIR/gnu-makefile"
+  _create_test_make_project "$project_dir"
+  ( 
+    cd $project_dir
+    rm -f [mM]akefile
+    
+    # Create GNUmakefile instead of Makefile
+    printf 'PREFIX ?= /usr/local\nCC = gcc\n\nall: app\n\napp: main.c\n\t$(CC) -o app main.c\n\ninstall: app\n\tmkdir -p $(PREFIX)/bin\n\tcp app $(PREFIX)/bin/\n' > GNUmakefile
+  
+    git add .
+    git commit -q -m "Initial commit"
+  )
+  local install_dir="$TEST_INSTALL_DIR-gnu"
+  mkdir -p "$install_dir"
+  
+  run gh-clone-build --verbose -p "$install_dir" "$project_dir"
+  assert $state equals 0
+  assert $output contains 'Detected Make build system'
+  assert $output contains 'Successfully completed!'
+}
