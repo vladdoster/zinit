@@ -108,48 +108,11 @@ ZINIT[EXTENDED_GLOB]=""
     .zinit-validate-before-after "$uspl2" "PATH" || return 1
     .zinit-validate-before-after "$uspl2" "FPATH" || return 1
 
-    typeset -A path_state fpath_state
-    local i
-
-    #
     # PATH processing
-    #
+    .zinit-compute-path-diff "$uspl2" "PATH"
 
-    # This includes new path elements
-    for i in "${(z)ZINIT[PATH_AFTER__$uspl2]}"; do
-        path_state[${(Q)i}]=1
-    done
-
-    # Remove duplicated entries, i.e. existing before
-    for i in "${(z)ZINIT[PATH_BEFORE__$uspl2]}"; do
-        unset "path_state[${(Q)i}]"
-    done
-
-    # Store the path elements, associating them with plugin ($uspl2)
-    ZINIT[PATH__$uspl2]=""
-    for i in "${(onk)path_state[@]}"; do
-        ZINIT[PATH__$uspl2]+="${(q)i} "
-    done
-
-    #
     # FPATH processing
-    #
-
-    # This includes new path elements
-    for i in "${(z)ZINIT[FPATH_AFTER__$uspl2]}"; do
-        fpath_state[${(Q)i}]=1
-    done
-
-    # Remove duplicated entries, i.e. existing before
-    for i in "${(z)ZINIT[FPATH_BEFORE__$uspl2]}"; do
-        unset "fpath_state[${(Q)i}]"
-    done
-
-    # Store the path elements, associating them with plugin ($uspl2)
-    ZINIT[FPATH__$uspl2]=""
-    for i in "${(onk)fpath_state[@]}"; do
-        ZINIT[FPATH__$uspl2]+="${(q)i} "
-    done
+    .zinit-compute-path-diff "$uspl2" "FPATH"
 
     return 0
 } # ]]]
