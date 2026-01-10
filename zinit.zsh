@@ -438,6 +438,22 @@ builtin setopt noaliases
 
     return $retval
 } # ]]]
+# FUNCTION: .zinit-apply-bindkey-mapping [[[
+# Helper to apply bindkey mapping and update position array.
+# Used internally by :zinit-tmp-subst-bindkey.
+#
+# $1 - bmap_val: the mapped value
+# $2 - val: 1 if negation flag, 0 otherwise
+# $pos - array to update (passed by reference from caller)
+.zinit-apply-bindkey-mapping() {
+    local bmap_val="$1" val="$2"
+    string="${(q)bmap_val}"
+    if (( val )) {
+        [[ ${pos[1]} = "-M" ]] && pos[4]="$bmap_val" || pos[2]="$bmap_val"
+    } else {
+        [[ ${pos[1]} = "-M" ]] && pos[3]="${(Q)bmap_val}" || pos[1]="${(Q)bmap_val}"
+    }
+} # ]]]
 # FUNCTION: :zinit-tmp-subst-bindkey [[[
 # Function defined to hijack plugin's calls to the `bindkey' builtin.
 #
@@ -490,12 +506,7 @@ builtin setopt noaliases
             [[ -z $bmap_val ]] && bmap_val="${ZINIT_CUR_BIND_MAP[!${(qqq)${(Q)1}}]}"
         }
         if [[ -n $bmap_val ]]; then
-            string="${(q)bmap_val}"
-            if (( val )) {
-                [[ ${pos[1]} = "-M" ]] && pos[4]="$bmap_val" || pos[2]="$bmap_val"
-            } else {
-                [[ ${pos[1]} = "-M" ]] && pos[3]="${(Q)bmap_val}" || pos[1]="${(Q)bmap_val}"
-            }
+            .zinit-apply-bindkey-mapping "$bmap_val" "$val"
             .zinit-add-report "${ZINIT[CUR_USPL2]}" ":::Bindkey: combination <$1> changed to <$bmap_val>${${(M)bmap_val:#hold}:+, i.e. ${ZINIT[col-error]}unmapped${ZINIT[col-rst]}}"
             ((1))
         elif [[ ( -n ${bmap_val::=${ZINIT_CUR_BIND_MAP[UPAR]}} && -n ${${ZINIT[UPAR]}[(r);:${(q)1};:]} ) || \
@@ -503,12 +514,7 @@ builtin setopt noaliases
                 ( -n ${bmap_val::=${ZINIT_CUR_BIND_MAP[RIGHTAR]}} && -n ${${ZINIT[RIGHTAR]}[(r);:${(q)1};:]} ) || \
                 ( -n ${bmap_val::=${ZINIT_CUR_BIND_MAP[LEFTAR]}} && -n ${${ZINIT[LEFTAR]}[(r);:${(q)1};:]} )
         ]]; then
-            string="${(q)bmap_val}"
-            if (( val )) {
-                [[ ${pos[1]} = "-M" ]] && pos[4]="$bmap_val" || pos[2]="$bmap_val"
-            } else {
-                [[ ${pos[1]} = "-M" ]] && pos[3]="${(Q)bmap_val}" || pos[1]="${(Q)bmap_val}"
-            }
+            .zinit-apply-bindkey-mapping "$bmap_val" "$val"
             .zinit-add-report "${ZINIT[CUR_USPL2]}" ":::Bindkey: combination <$1> recognized as cursor-key and changed to <${bmap_val}>${${(M)bmap_val:#hold}:+, i.e. ${ZINIT[col-error]}unmapped${ZINIT[col-rst]}}"
         fi
         [[ $bmap_val = hold ]] && return 0
