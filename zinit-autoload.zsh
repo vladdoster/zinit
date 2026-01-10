@@ -1831,15 +1831,13 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
         uspl1=${p:t}
         [[ $uspl1 = custom || $uspl1 = _local---zinit ]] && continue
 
-        pushd "$p" >/dev/null || continue
-        if [[ -d .git ]]; then
-            gitout=`command git log --all --max-count=1 --since=$timespec 2>/dev/null`
+        if [[ -d "$p/.git" ]]; then
+            gitout=$(command git -C "$p" log --all --max-count=1 --since=$timespec 2>/dev/null)
             if [[ -n $gitout ]]; then
                 .zinit-any-colorify-as-uspl2 "$uspl1"
                 builtin print -r -- "$REPLY"
             fi
         fi
-        popd >/dev/null
     done
 } # ]]]
 # FUNCTION: .zinit-run-delete-hooks [[[
@@ -1894,12 +1892,15 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
     # is to get longest name of plugin which is having any completions
     integer longest=0
     typeset -a completions
+    typeset -A plugin_completions
     local pp
     for pp in "${plugin_paths[@]}"; do
         completions=( "$pp"/**/_[^_.]*~*(*.zwc|*.html|*.txt|*.png|*.jpg|*.jpeg|*.js|*.md|*.yml|*.ri|_zsh_highlight*|/zsdoc/*|*.ps1|*.lua)(DN^/) )
         if [[ "${#completions[@]}" -gt 0 ]]; then
             local pd="${pp:t}"
             [[ "${#pd}" -gt "$longest" ]] && longest="${#pd}"
+            # Store completions to avoid re-globbing
+            plugin_completions[$pp]="${(j: :)completions[@]}"
         fi
     done
 
@@ -1907,11 +1908,12 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
 
     local c
     for pp in "${plugin_paths[@]}"; do
-        completions=( "$pp"/**/_[^_.]*~*(*.zwc|*.html|*.txt|*.png|*.jpg|*.jpeg|*.js|*.md|*.yml|*.ri|_zsh_highlight*|/zsdoc/*|*.ps1|*.lua)(DN^/) )
+        # Use cached completions instead of re-globbing
+        [[ -z ${plugin_completions[$pp]} ]] && continue
+        completions=( ${(z)plugin_completions[$pp]} )
 
-        if [[ "${#completions[@]}" -gt 0 ]]; then
-            # Array of completions, e.g. ( _cp _xauth )
-            completions=( "${completions[@]:t}" )
+        # Array of completions, e.g. ( _cp _xauth )
+        completions=( "${completions[@]:t}" )
 
             # Detect if the completions are installed
             integer all_installed="${#completions[@]}"
