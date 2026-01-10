@@ -3,6 +3,46 @@
 # Copyright (c) 2016-2020 Sebastian Gniazdowski and contributors
 # Copyright (c) 2021-2022 zdharma-continuum and contributors
 
+# FUNCTION: .zinit-validate-before-after [[[
+# Helper function to validate that BEFORE and AFTER tracking variables are set.
+# This validation is used before computing diffs.
+#
+# $1 - uspl2 (user/plugin identifier)
+# $2 - variable prefix (e.g., FUNCTIONS, OPTIONS, PATH, FPATH, PARAMETERS)
+#
+# Returns 0 if validation passes, 1 if variables are not properly set
+.zinit-validate-before-after() {
+    builtin setopt localoptions extendedglob nokshglob noksharrays
+    local uspl2="$1" prefix="$2"
+    [[ "${ZINIT[${prefix}_BEFORE__$uspl2]}" != *[$'! \t']* || "${ZINIT[${prefix}_AFTER__$uspl2]}" != *[$'! \t']* ]] && return 1
+    return 0
+} # ]]]
+# FUNCTION: .zinit-compute-path-diff [[[
+# Helper function to compute differences in PATH-like variables (PATH, FPATH).
+# This reduces code duplication in .zinit-diff-env-compute.
+#
+# $1 - uspl2 (user/plugin identifier)
+# $2 - variable prefix (PATH or FPATH)
+.zinit-compute-path-diff() {
+    local uspl2="$1" prefix="$2" i
+    typeset -A state
+    
+    # Include new path elements
+    for i in "${(z)ZINIT[${prefix}_AFTER__$uspl2]}"; do
+        state[${(Q)i}]=1
+    done
+    
+    # Remove duplicated entries, i.e. existing before
+    for i in "${(z)ZINIT[${prefix}_BEFORE__$uspl2]}"; do
+        unset "state[${(Q)i}]"
+    done
+    
+    # Store the path elements, associating them with plugin ($uspl2)
+    ZINIT[${prefix}__$uspl2]=""
+    for i in "${(onk)state[@]}"; do
+        ZINIT[${prefix}__$uspl2]+="${(q)i} "
+    done
+} # ]]]
 # FUNCTION: .zinit-any-colorify-as-uspl2 [[[
 # Returns ANSI-colorified "user/plugin" string, from any supported
 # plugin spec (user---plugin, user/plugin, user plugin, plugin).
