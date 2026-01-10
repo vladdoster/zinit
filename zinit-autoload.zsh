@@ -1939,7 +1939,7 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
             integer adjust_ec=$(( ${#ZINIT[col-rst]} * 2 + ${#ZINIT[col-uname]} + ${#ZINIT[col-pname]} ))
 
             builtin print "${(r:longest+adjust_ec:: :)REPLY} ${(j:, :)completions}"
-        fi
+        
     done
 } # ]]]
 
