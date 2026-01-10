@@ -2208,7 +2208,8 @@ __zinit-cmake-base-hook () {
     fi
     (( OPTS[opt_-q,--quiet] || ZINIT[DEBUG] )) && local QUIET='2>/dev/null 1>&2'
     local c ret=0 ice='{b}cmake{rst}:'
-    for c in "-S ${dir} -B ${dir}/build -DCMAKE_BUILD_TYPE=Release --install-prefix ${ZINIT[ZPFX]} ${QUIET}" "--build ${dir}/build --parallel $(nproc) ${QUIET}" "--install ${dir}/build ${QUIET}"; do
+    local nproc_val=${commands[nproc]:+$(nproc)}
+    for c in "-S ${dir} -B ${dir}/build -DCMAKE_BUILD_TYPE=Release --install-prefix ${ZINIT[ZPFX]} ${QUIET}" "--build ${dir}/build --parallel ${nproc_val:-4} ${QUIET}" "--install ${dir}/build ${QUIET}"; do
       +zi-log "{m} ${ice} {faint}cmake ${(Ds; ;)c} {rst}"
         eval "cmake ${c}" 2> /dev/null >&2
         if (( $? )); then

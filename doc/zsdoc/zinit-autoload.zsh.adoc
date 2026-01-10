@@ -1006,7 +1006,7 @@ ____
 
 ____
 
-Has 28 line(s). Calls functions:
+Has 26 line(s). Calls functions:
 
  .zinit-recently
  `-- zinit-side.zsh/.zinit-any-colorify-as-uspl2
@@ -1077,7 +1077,7 @@ ____
 
 ____
 
-Has 43 line(s). Calls functions:
+Has 44 line(s). Calls functions:
 
  .zinit-search-completions
  `-- zinit-side.zsh/.zinit-any-colorify-as-uspl2

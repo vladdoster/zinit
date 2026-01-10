@@ -42,9 +42,9 @@ elif [[ $COMPRESSION == (#i)*xz* ]]; then
 elif [[ $COMPRESSION == (#i)*cpio* ]]; then
   DECOMPRESSCMD=( cat )
 else
-  DECOMPRESSCMD=( $(which unlzma 2>/dev/null) )
+  DECOMPRESSCMD=( $(command -v unlzma 2>/dev/null) )
   if [[ $DECOMPRESSCMD != /* ]]; then
-    DECOMPRESSCMD=( $(which lzmash 2>/dev/null) )
+    DECOMPRESSCMD=( $(command -v lzmash 2>/dev/null) )
     if [[ $DECOMPRESSCMD == /* ]]; then
       DECOMPRESSCMD=( lzmash -d -c )
     else

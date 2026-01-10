@@ -2234,7 +2234,7 @@ $match[7]}:-${ZINIT[__last-formatter-code]}}}:+}}}//←→}
                 msg=${${(MS)msg##$cmd:\[[^]]##}:-${(MS)msg##\*:\[[^]]##}}
                 msg=${msg#($cmd|\*):\[}
             }
-            local pre_msg=`+zi-log -n {opt}${(r:14:)${txt#opt_}}`
+            local pre_msg=$(+zi-log -n {opt}${(r:14:)${txt#opt_}})
             +zi-log ${(r:35:: :)pre_msg}{rst}{ehi}→{rst}"  $msg"
         }
     } elif [[ -n $allowed ]] {
