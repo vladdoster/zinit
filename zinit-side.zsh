@@ -3,6 +3,20 @@
 # Copyright (c) 2016-2020 Sebastian Gniazdowski and contributors
 # Copyright (c) 2021-2022 zdharma-continuum and contributors
 
+# FUNCTION: .zinit-validate-before-after [[[
+# Helper function to validate that BEFORE and AFTER tracking variables are set.
+# This validation is used before computing diffs.
+#
+# $1 - uspl2 (user/plugin identifier)
+# $2 - variable prefix (e.g., FUNCTIONS, OPTIONS, PATH, FPATH, PARAMETERS)
+#
+# Returns 0 if validation passes, 1 if variables are not properly set
+.zinit-validate-before-after() {
+    builtin setopt localoptions extendedglob nokshglob noksharrays
+    local uspl2="$1" prefix="$2"
+    [[ "${ZINIT[${prefix}_BEFORE__$uspl2]}" != *[$'! \t']* || "${ZINIT[${prefix}_AFTER__$uspl2]}" != *[$'! \t']* ]] && return 1
+    return 0
+} # ]]]
 # FUNCTION: .zinit-any-colorify-as-uspl2 [[[
 # Returns ANSI-colorified "user/plugin" string, from any supported
 # plugin spec (user---plugin, user/plugin, user plugin, plugin).

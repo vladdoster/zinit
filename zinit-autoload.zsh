@@ -39,9 +39,7 @@ ZINIT[EXTENDED_GLOB]=""
 
     # Cannot run diff if *_BEFORE or *_AFTER variable is not set
     # Following is paranoid for *_BEFORE and *_AFTER being only spaces
-
-    builtin setopt localoptions extendedglob nokshglob noksharrays
-    [[ "${ZINIT[FUNCTIONS_BEFORE__$uspl2]}" != *[$'! \t']* || "${ZINIT[FUNCTIONS_AFTER__$uspl2]}" != *[$'! \t']* ]] && return 1
+    .zinit-validate-before-after "$uspl2" "FUNCTIONS" || return 1
 
     typeset -A func
     local i
@@ -75,8 +73,7 @@ ZINIT[EXTENDED_GLOB]=""
 
     # Cannot run diff if *_BEFORE or *_AFTER variable is not set
     # Following is paranoid for *_BEFORE and *_AFTER being only spaces
-    builtin setopt localoptions extendedglob nokshglob noksharrays
-    [[ "${ZINIT[OPTIONS_BEFORE__$uspl2]}" != *[$'! \t']* || "${ZINIT[OPTIONS_AFTER__$uspl2]}" != *[$'! \t']* ]] && return 1
+    .zinit-validate-before-after "$uspl2" "OPTIONS" || return 1
 
     typeset -A opts_before opts_after opts
     opts_before=( "${(z)ZINIT[OPTIONS_BEFORE__$uspl2]}" )
@@ -108,9 +105,8 @@ ZINIT[EXTENDED_GLOB]=""
 
     # Cannot run diff if *_BEFORE or *_AFTER variable is not set
     # Following is paranoid for *_BEFORE and *_AFTER being only spaces
-    builtin setopt localoptions extendedglob nokshglob noksharrays
-    [[ "${ZINIT[PATH_BEFORE__$uspl2]}" != *[$'! \t']* || "${ZINIT[PATH_AFTER__$uspl2]}" != *[$'! \t']* ]] && return 1
-    [[ "${ZINIT[FPATH_BEFORE__$uspl2]}" != *[$'! \t']* || "${ZINIT[FPATH_AFTER__$uspl2]}" != *[$'! \t']* ]] && return 1
+    .zinit-validate-before-after "$uspl2" "PATH" || return 1
+    .zinit-validate-before-after "$uspl2" "FPATH" || return 1
 
     typeset -A path_state fpath_state
     local i
@@ -169,8 +165,7 @@ ZINIT[EXTENDED_GLOB]=""
 
     # Cannot run diff if *_BEFORE or *_AFTER variable is not set
     # Following is paranoid for *_BEFORE and *_AFTER being only spaces
-    builtin setopt localoptions extendedglob nokshglob noksharrays
-    [[ "${ZINIT[PARAMETERS_BEFORE__$uspl2]}" != *[$'! \t']* || "${ZINIT[PARAMETERS_AFTER__$uspl2]}" != *[$'! \t']* ]] && return 1
+    .zinit-validate-before-after "$uspl2" "PARAMETERS" || return 1
 
     # Un-concatenated parameters from moment of diff start and of diff end
     typeset -A params_before params_after
