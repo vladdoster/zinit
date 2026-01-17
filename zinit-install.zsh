@@ -1516,296 +1516,285 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
 # $2 - file
 ziextract() {
     builtin emulate -LR zsh ${=${options[xtrace]:#off}:+-o xtrace}
-    setopt extendedglob typesetsilent noshortloops # warncreateglobal
-
+    setopt extendedglob typesetsilent noshortloops
     local -aU opt_move opt_move2 opt_norm opt_auto opt_nobkp
-    zparseopts -D -E -move=opt_move -move2=opt_move2 -norm=opt_norm \
-            -auto=opt_auto -nobkp=opt_nobkp || \
-        { +zi-log "{info}[{pre}ziextract{info}]{error} Incorrect options given to" \
-                  "\`{pre}ziextract{msg2}' (available are: {meta}--auto{msg2}," \
-                  "{meta}--move{msg2}, {meta}--move2{msg2}, {meta}--norm{msg2}," \
-                  "{meta}--nobkp{msg2}).{rst}"; return 1; }
-
+    zparseopts -D -E -move=opt_move -move2=opt_move2 -norm=opt_norm -auto=opt_auto -nobkp=opt_nobkp || {
+        +zi-log "{info}[{pre}ziextract{info}]{error} Incorrect options given to" "\`{pre}ziextract{msg2}' (available are: {meta}--auto{msg2}," "{meta}--move{msg2}, {meta}--move2{msg2}, {meta}--norm{msg2}," "{meta}--nobkp{msg2}).{rst}"
+        return 1
+    }
     local file="$1" ext="$2"
-    integer move=${${${(M)${#opt_move}:#0}:+0}:-1} \
-            move2=${${${(M)${#opt_move2}:#0}:+0}:-1} \
-            norm=${${${(M)${#opt_norm}:#0}:+0}:-1} \
-            auto=${${${(M)${#opt_auto}:#0}:+0}:-1} \
-            nobkp=${${${(M)${#opt_nobkp}:#0}:+0}:-1}
-
-    if (( auto )) {
-        # First try known file extensions
+    integer move=${${${(M)${#opt_move}:#0}:+0}:-1} move2=${${${(M)${#opt_move2}:#0}:+0}:-1} norm=${${${(M)${#opt_norm}:#0}:+0}:-1} auto=${${${(M)${#opt_auto}:#0}:+0}:-1} nobkp=${${${(M)${#opt_nobkp}:#0}:+0}:-1}
+    if (( auto )); then
         local -aU files
         integer ret_val
-        files=( (#i)**/*.(zip|rar|7z|tgz|tbz|tbz2|tar.gz|tar.bz2|tar.7z|txz|tar.xz|gz|xz|tar|dmg|exe)~(*/*|.(_backup|git))/*(-.DN) )
-        for file ( $files ) {
+        files=((#i)**/*.(zip|rar|7z|tgz|tbz|tbz2|tar.gz|tar.bz2|tar.7z|txz|tar.xz|gz|xz|tar|dmg|exe)~(*/*|.(_backup|git))/*(-.DN))
+        for file in $files; do
             ziextract "$file" $opt_move $opt_move2 $opt_norm $opt_nobkp ${${${#files}:#1}:+--nobkp}
             ret_val+=$?
-        }
-        # Second, try to find the archive via `file' tool
-        if (( !${#files} )) {
+        done
+        if (( !${#files} )); then
             local -aU output infiles stage2_processed archives
-            infiles=( **/*~(._zinit*|._backup|.git)(|/*)~*/*/*(-.DN) )
-            output=( ${(@f)"$(command file -- $infiles 2>&1)"} )
-            archives=( ${(M)output[@]:#(#i)(* |(#s))(zip|rar|xz|7-zip|gzip|bzip2|tar|exe|PE32) *} )
-            for file ( $archives ) {
+            infiles=(**/*~(._zinit*|._backup|.git)(|/*)~*/*/*(-.DN))
+            output=(${(@f)"$(command file -- $infiles 2>&1)"})
+            archives=(${(M)output[@]:#(#i)(* |(#s))(zip|rar|xz|7-zip|gzip|bzip2|tar|exe|PE32) *})
+            for file in $archives; do
                 local fname=${(M)file#(${(~j:|:)infiles}): } desc=${file#(${(~j:|:)infiles}): } type
                 fname=${fname%%??}
                 [[ -z $fname || -n ${stage2_processed[(r)$fname]} ]] && continue
                 type=${(L)desc/(#b)(#i)(* |(#s))(zip|rar|xz|7-zip|gzip|bzip2|tar|exe|PE32) */$match[2]}
-                if [[ $type = (zip|rar|xz|7-zip|gzip|bzip2|tar|exe|pe32) ]] {
-                    (( !OPTS[opt_-q,--quiet] )) && \
-                        +zi-log "{info}[{pre}ziextract{info}]{msg2} detected a {meta}$type{rst} archive in the file {file}$fname{rst}."
+                if [[ $type = (zip|rar|xz|7-zip|gzip|bzip2|tar|exe|pe32) ]]; then
+                    (( !OPTS[opt_-q,--quiet] )) && +zi-log "{info}[{pre}ziextract{info}]{msg2} detected a {meta}$type{rst} archive in the file {file}$fname{rst}."
                     ziextract "$fname" "$type" $opt_move $opt_move2 $opt_norm --norm ${${${#archives}:#1}:+--nobkp}
                     integer iret_val=$?
                     ret_val+=iret_val
-
                     (( iret_val )) && continue
-
-                    # Support nested tar.(bz2|gz|…) archives
                     local infname=$fname
                     [[ -f $fname.out ]] && fname=$fname.out
-                    files=( *.tar(ND) )
-                    if [[ -f $fname || -f ${fname:r} ]] {
+                    files=(*.tar(ND))
+                    if [[ -f $fname || -f ${fname:r} ]]; then
                         local -aU output2 archives2
-                        output2=( ${(@f)"$(command file -- "$fname"(N) "${fname:r}"(N) $files[1](N) 2>&1)"} )
-                        archives2=( ${(M)output2[@]:#(#i)(* |(#s))(zip|rar|xz|7-zip|gzip|bzip2|tar|exe|PE32) *} )
+                        output2=(${(@f)"$(command file -- "$fname"(N) "${fname:r}"(N) $files[1](N) 2>&1)"})
+                        archives2=(${(M)output2[@]:#(#i)(* |(#s))(zip|rar|xz|7-zip|gzip|bzip2|tar|exe|PE32) *})
                         local file2
-                        for file2 ( $archives2 ) {
+                        for file2 in $archives2; do
                             fname=${file2%:*} desc=${file2##*:}
                             local type2=${(L)desc/(#b)(#i)(* |(#s))(zip|rar|xz|7-zip|gzip|bzip2|tar|exe|PE32) */$match[2]}
-                            if [[ $type != $type2 && \
-                                $type2 = (zip|rar|xz|7-zip|gzip|bzip2|tar)
-                            ]] {
-                                # TODO: if multiple archives are really in the archive,
-                                # this might delete too soon… However, it's unusual case.
+                            if [[ $type != $type2 && $type2 = (zip|rar|xz|7-zip|gzip|bzip2|tar) ]]; then
                                 [[ $fname != $infname && $norm -eq 0 ]] && command rm -f "$infname"
-                                (( !OPTS[opt_-q,--quiet] )) && \
-                                    +zi-log "{info}[{pre}ziextract{info}]{msg2} detected a {obj}${type2}{rst} archive in the file {file}${fname}{rst}."
+                                (( !OPTS[opt_-q,--quiet] )) && +zi-log "{info}[{pre}ziextract{info}]{msg2} detected a {obj}${type2}{rst} archive in the file {file}${fname}{rst}."
                                 ziextract "$fname" "$type2" $opt_move $opt_move2 $opt_norm ${${${#archives}:#1}:+--nobkp}
                                 ret_val+=$?
-                                stage2_processed+=( $fname )
-                                if [[ $fname == *.out ]] {
+                                stage2_processed+=($fname)
+                                if [[ $fname == *.out ]]; then
                                     [[ -f $fname ]] && command mv -f "$fname" "${fname%.out}"
-                                    stage2_processed+=( ${fname%.out} )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+                                    stage2_processed+=(${fname%.out})
+                                fi
+                            fi
+                        done
+                    fi
+                fi
+            done
+        fi
         return $ret_val
-    }
-
-    if [[ -z $file ]] {
+    fi
+    if [[ -z $file ]]; then
         +zi-log "{info}[{pre}ziextract{info}]{error} argument needed (the file to extract) or the {meta}--auto{msg} option."
         return 1
-    }
-    if [[ ! -e $file ]] {
+    fi
+    if [[ ! -e $file ]]; then
         +zi-log "{info}[{pre}ziextract{info}]{error} ERROR:{msg} the file \`{meta}${file}{msg}' doesn't exist.{rst}"
         return 1
-    }
-    if (( !nobkp )) {
+    fi
+    if (( !nobkp )); then
         command mkdir -p ._backup
         command rm -rf ._backup/*(DN)
-        command mv -f *~(._zinit*|._backup|.git|.svn|.hg|$file)(DN) ._backup 2>/dev/null
-    }
-
-    .zinit-extract-wrapper() {
+        command mv -f *~(._zinit*|._backup|.git|.svn|.hg|$file)(DN) ._backup 2> /dev/null
+    fi
+    .zinit-extract-wrapper () {
         local file="$1" fun="$2" retval
-        (( !OPTS[opt_-q,--quiet] )) && \
-            +zi-log "{info}[{pre}ziextract{info}]{rst} Unpacking the files from: \`{obj}$file{msg}'{…}{rst}"
-        $fun; retval=$?
-        if (( retval == 0 )) {
+        (( !OPTS[opt_-q,--quiet] )) && +zi-log "{info}[{pre}ziextract{info}]{rst} Unpacking the files from: \`{obj}$file{msg}'{…}{rst}"
+        $fun
+        retval=$?
+        if (( retval == 0 )); then
             local -a files
-            files=( *~(._zinit*|._backup|.git|.svn|.hg|$file)(DN) )
+            files=(*~(._zinit*|._backup|.git|.svn|.hg|$file)(DN))
             (( ${#files} && !norm )) && command rm -f "$file"
-        }
+        fi
         return $retval
     }
-
-    →zinit-check() { (( ${+commands[$1]} )) || \
-        +zi-log "{info}[{pre}ziextract{info}]{error} Error:{msg} No command {data}$1{msg}, it is required to unpack {file}$2{rst}."
+    →zinit-check () {
+        (( ${+commands[$1]} )) || +zi-log "{info}[{pre}ziextract{info}]{error} Error:{msg} No command {data}$1{msg}, it is required to unpack {file}$2{rst}."
     }
-
     case "${${ext:+.$ext}:-$file}" in
         ((#i)*.zip)
-            →zinit-extract() { →zinit-check unzip "$file" || return 1; command unzip -qq -o "$file"; }
+            →zinit-extract () {
+                →zinit-check unzip "$file" || return 1
+                command unzip -qq -o "$file"
+            }
             ;;
         ((#i)*.rar)
-            →zinit-extract() { →zinit-check unrar "$file" || return 1; command unrar x "$file"; }
+            →zinit-extract () {
+                →zinit-check unrar "$file" || return 1
+                command unrar x "$file"
+            }
             ;;
         ((#i)*.tar.bz2|(#i)*.tbz|(#i)*.tbz2)
-            →zinit-extract() { →zinit-check bzip2 "$file" || return 1; command bzip2 -dc "$file" | command tar --no-same-owner -xf -; }
+            →zinit-extract () {
+                →zinit-check bzip2 "$file" || return 1
+                command bzip2 -dc "$file" | command tar --no-same-owner -xf -
+            }
             ;;
         ((#i)*.tar.gz|(#i)*.tgz)
-            →zinit-extract() { →zinit-check gzip "$file" || return 1; command gzip -dc "$file" | command tar --no-same-owner -xf -; }
+            →zinit-extract () {
+                →zinit-check gzip "$file" || return 1
+                command gzip -dc "$file" | command tar --no-same-owner -xf -
+            }
             ;;
         ((#i)*.tar.xz|(#i)*.txz)
-            →zinit-extract() { →zinit-check xz "$file" || return 1; command xz -dc "$file" | command tar --no-same-owner -xf -; }
+            →zinit-extract () {
+                →zinit-check xz "$file" || return 1
+                command xz -dc "$file" | command tar --no-same-owner -xf -
+            }
             ;;
         ((#i)*.tar.7z|(#i)*.t7z)
-            →zinit-extract() { →zinit-check 7z "$file" || return 1; command 7z x -so "$file" | command tar --no-same-owner -xf -; }
+            →zinit-extract () {
+                →zinit-check 7z "$file" || return 1
+                command 7z x -so "$file" | command tar --no-same-owner -xf -
+            }
             ;;
         ((#i)*.tar)
-            →zinit-extract() { →zinit-check tar "$file" || return 1; command tar --no-same-owner -xf "$file"; }
+            →zinit-extract () {
+                →zinit-check tar "$file" || return 1
+                command tar --no-same-owner -xf "$file"
+            }
             ;;
         ((#i)*.gz|(#i)*.gzip)
-            if [[ $file != (#i)*.gz ]] {
+            if [[ $file != (#i)*.gz ]]; then
                 command mv $file $file.gz
                 file=$file.gz
                 integer zi_was_renamed=1
-            }
-            →zinit-extract() {
+            fi
+            →zinit-extract () {
                 →zinit-check gunzip "$file" || return 1
                 .zinit-get-mtime-into "$file" 'ZINIT[tmp]'
-                command gunzip "$file" |& command grep -E -v '.out$'
+                command gunzip "$file" 2>&1 | command grep -E -v '.out$'
                 integer ret=$pipestatus[1]
                 command touch -t "$(strftime %Y%m%d%H%M.%S $ZINIT[tmp])" "$file"
                 return ret
             }
             ;;
         ((#i)*.bz2|(#i)*.bzip2)
-            # Rename file if its extension does not match "bz2". bunzip2 refuses
-            # to operate on files that are not named correctly.
-            # See https://github.com/zdharma-continuum/zinit/issues/105
-            if [[ $file != (#i)*.bz2 ]] {
+            if [[ $file != (#i)*.bz2 ]]; then
                 command mv $file $file.bz2
                 file=$file.bz2
-            }
-            →zinit-extract() { →zinit-check bunzip2 "$file" || return 1
+            fi
+            →zinit-extract () {
+                →zinit-check bunzip2 "$file" || return 1
                 .zinit-get-mtime-into "$file" 'ZINIT[tmp]'
-                command bunzip2 "$file" |& command grep -E -v '.out$'
+                command bunzip2 "$file" 2>&1 | command grep -E -v '.out$'
                 integer ret=$pipestatus[1]
                 command touch -t "$(strftime %Y%m%d%H%M.%S $ZINIT[tmp])" "$file"
                 return ret
             }
             ;;
         ((#i)*.xz)
-            if [[ $file != (#i)*.xz ]] {
+            if [[ $file != (#i)*.xz ]]; then
                 command mv $file $file.xz
                 file=$file.xz
-            }
-            →zinit-extract() { →zinit-check xz "$file" || return 1
+            fi
+            →zinit-extract () {
+                →zinit-check xz "$file" || return 1
                 .zinit-get-mtime-into "$file" 'ZINIT[tmp]'
                 command xz -d "$file"
                 integer ret=$?
                 command touch -t "$(strftime %Y%m%d%H%M.%S $ZINIT[tmp])" "$file"
                 return ret
-             }
+            }
             ;;
         ((#i)*.7z|(#i)*.7-zip)
-            →zinit-extract() { →zinit-check 7z "$file" || return 1; command 7z x "$file" >/dev/null;  }
+            →zinit-extract () {
+                →zinit-check 7z "$file" || return 1
+                command 7z x "$file" > /dev/null
+            }
             ;;
         ((#i)*.dmg)
-            →zinit-extract() {
+            →zinit-extract () {
                 local prog
-                for prog ( hdiutil cp ) { →zinit-check $prog "$file" || return 1; }
-
+                for prog in hdiutil cp; do
+                    →zinit-check $prog "$file" || return 1
+                done
                 integer retval
                 local attached_vol="$( command hdiutil attach "$file" | \
                            command tail -n1 | command cut -f 3 )"
-
                 command cp -Rf ${attached_vol:-${TMPDIR:-/tmp}/acb321GEF}/*(D) .
                 retval=$?
                 command hdiutil detach $attached_vol
-
-                if (( retval )) {
-                    +zi-log "{info}[{pre}ziextract{info}]{error} Error:{msg} problem occurred when attempted to copy the files" \
-                            "from the mounted image: \`{obj}${file}{msg}'.{rst}"
-                }
+                if (( retval )); then
+                    +zi-log "{info}[{pre}ziextract{info}]{error} Error:{msg} problem occurred when attempted to copy the files" "from the mounted image: \`{obj}${file}{msg}'.{rst}"
+                fi
                 return $retval
             }
             ;;
         ((#i)*.deb)
-            →zinit-extract() { →zinit-check dpkg-deb "$file" || return 1; command dpkg-deb -R "$file" .; }
+            →zinit-extract () {
+                →zinit-check dpkg-deb "$file" || return 1
+                command dpkg-deb -R "$file" .
+            }
             ;;
         ((#i)*.rpm)
-            →zinit-extract() { →zinit-check cpio "$file" || return 1; $ZINIT[BIN_DIR]/share/rpm2cpio.zsh "$file" | command cpio -imd --no-absolute-filenames; }
+            →zinit-extract () {
+                →zinit-check cpio "$file" || return 1
+                $ZINIT[BIN_DIR]/share/rpm2cpio.zsh "$file" | command cpio -imd --no-absolute-filenames
+            }
             ;;
         ((#i)*.exe|(#i)*.pe32)
-            →zinit-extract() {
+            →zinit-extract () {
                 command chmod a+x -- ./$file
                 ./$file /S /D="`cygpath -w $PWD`"
             }
             ;;
     esac
-
-    if [[ $(typeset -f + →zinit-extract) == "→zinit-extract" ]] {
+    if [[ $(typeset -f + →zinit-extract) == "→zinit-extract" ]]; then
         .zinit-extract-wrapper "$file" →zinit-extract || {
             +zi-log -n "{info}[{pre}ziextract{info}]{error} Error:{msg} extraction of the archive \`{file}${file}{msg}' had problems"
             local -a bfiles
-            bfiles=( ._backup/*(DN) )
-            if (( ${#bfiles} && !nobkp )) {
+            bfiles=(._backup/*(DN))
+            if (( ${#bfiles} && !nobkp )); then
                 +zi-log -n ", restoring the previous version of the plugin/snippet"
-                command mv ._backup/*(DN) . 2>/dev/null
-            }
+                command mv ._backup/*(DN) . 2> /dev/null
+            fi
             +zi-log ".{rst}"
-            unfunction -- →zinit-extract →zinit-check 2>/dev/null
+            unfunction -- →zinit-extract →zinit-check 2> /dev/null
             return 1
         }
         unfunction -- →zinit-extract →zinit-check
-    } else {
+    else
         integer warning=1
-    }
+    fi
     unfunction -- .zinit-extract-wrapper
-
     local -aU execs
-    execs=( **/*~(._zinit(|/*)|.git(|/*)|.svn(|/*)|.hg(|/*)|._backup(|/*))(DN-.) )
-    if [[ ${#execs} -gt 0 && -n $execs ]] {
-        execs=( ${(@f)"$( file ${execs[@]} )"} )
-        execs=( "${(M)execs[@]:#[^(:]##:*executable*}" )
-        execs=( "${execs[@]/(#b)([^(:]##):*/${match[1]}}" )
-    }
-
-    builtin print -rl -- ${execs[@]} >! ${TMPDIR:-/tmp}/zinit-execs.$$.lst
-    if [[ ${#execs} -gt 0 ]] {
+    execs=(**/*~(._zinit(|/*)|.git(|/*)|.svn(|/*)|.hg(|/*)|._backup(|/*))(DN-.))
+    if [[ ${#execs} -gt 0 && -n $execs ]]; then
+        execs=(${(@f)"$( file ${execs[@]} )"})
+        execs=("${(M)execs[@]:#[^(:]##:*executable*}")
+        execs=("${execs[@]/(#b)([^(:]##):*/${match[1]}}")
+    fi
+    builtin print -rl -- ${execs[@]} >| ${TMPDIR:-/tmp}/zinit-execs.$$.lst
+    if [[ ${#execs} -gt 0 ]]; then
         command chmod a+x "${execs[@]}"
-        if (( !OPTS[opt_-q,--quiet] )) {
+        if (( !OPTS[opt_-q,--quiet] )); then
             if (( ${#execs} == 1 )); then
-                    +zi-log "{info}[{pre}ziextract{info}]{rst} Successfully extracted and assigned +x chmod to the file: {obj}${execs[1]}{rst}."
+                +zi-log "{info}[{pre}ziextract{info}]{rst} Successfully extracted and assigned +x chmod to the file: {obj}${execs[1]}{rst}."
             else
                 local sep="$ZINIT[col-rst],$ZINIT[col-obj] "
-                if (( ${#execs} > 7 )) {
-                    +zi-log "{info}[{pre}ziextract{info}]{rst} Successfully" \
-                        "extracted and marked executable the appropriate files" \
-                        "({obj}${(pj:$sep:)${(@)execs[1,5]:t}},…{rst}) contained" \
-                        "in \`{file}$file{rst}'. All the extracted" \
-                        "{obj}${#execs}{rst} executables are" \
-                        "available in the {msg2}INSTALLED_EXECS{rst}" \
-                        "array."
-                } else {
-                    +zi-log "{info}[{pre}ziextract{info}]{rst} Successfully" \
-                        "extracted and marked {obj}${#execs}{rst} executable the appropriate files" \
-                        "({obj}${(pj:$sep:)${execs[@]:t}}{rst}) contained" \
-                        "in \`{file}$file{rst}'."
-                }
+                if (( ${#execs} > 7 )); then
+                    +zi-log "{info}[{pre}ziextract{info}]{rst} Successfully" "extracted and marked executable the appropriate files" "({obj}${(pj:$sep:)${(@)execs[1,5]:t}},…{rst}) contained" "in \`{file}$file{rst}'. All the extracted" "{obj}${#execs}{rst} executables are" "available in the {msg2}INSTALLED_EXECS{rst}" "array."
+                else
+                    +zi-log "{info}[{pre}ziextract{info}]{rst} Successfully" "extracted and marked {obj}${#execs}{rst} executable the appropriate files" "({obj}${(pj:$sep:)${execs[@]:t}}{rst}) contained" "in \`{file}$file{rst}'."
+                fi
             fi
-        }
-    } elif (( warning )) {
+        fi
+    elif (( warning )); then
         +zi-log "{info}[{pre}ziextract{info}]{error} Error:{msg} didn't recognize archive type of {obj}${file}{msg} ${ext:+/ {obj2}${ext}{msg} } (no extraction has been done).{rst}"
-    }
-
-    if (( move | move2 )) {
+    fi
+    if (( move | move2 )); then
         local -a files
-        files=( *~(._zinit|.git|._backup|.tmp231ABC)(DN/) )
-        if (( ${#files} )) {
+        files=(*~(._zinit|.git|._backup|.tmp231ABC)(DN/))
+        if (( ${#files} )); then
             command mkdir -p .tmp231ABC
             command mv -f *~(._zinit|.git|._backup|.tmp231ABC)(D) .tmp231ABC
-            if (( !move2 )) {
+            if (( !move2 )); then
                 command mv -f **/*~(*/*~*/*/*|*/*/*/*|^*/*|._zinit(|/*)|.git(|/*)|._backup(|/*))(DN) .
-            } else {
+            else
                 command mv -f **/*~(*/*~*/*/*/*|*/*/*/*/*|^*/*|._zinit(|/*)|.git(|/*)|._backup(|/*))(DN) .
-            }
-
-            command mv .tmp231ABC/$file . &>/dev/null
+            fi
+            command mv .tmp231ABC/$file . &> /dev/null
             command rm -rf .tmp231ABC
-        }
+        fi
         REPLY="${${execs[1]:h}:h}/${execs[1]:t}"
-    } else {
+    else
         REPLY="${execs[1]}"
-    }
+    fi
     return 0
 } # ]]]
 # FUNCTION: .zinit-extract [[[
@@ -1814,32 +1803,24 @@ ziextract() {
     setopt extendedglob warncreateglobal typesetsilent
     local tpe=$1 extract=$2 local_dir=$3
     (
-        builtin cd -q "$local_dir" || \
-            { +zi-log "{error}ERROR:{msg2} The path of the $tpe" \
-                      "(\`{file}$local_dir{msg2}') isn't accessible.{rst}"
-                return 1
-            }
+        builtin cd -q "$local_dir" || {
+            +zi-log "{error}ERROR:{msg2} The path of the $tpe" "(\`{file}$local_dir{msg2}') isn't accessible.{rst}"
+            return 1
+        }
         local -aU files
-        files=( ${(@)${(@s: :)${extract##(\!-|-\!|\!|-)}}//(#b)(((#s)|([^\\])[\\]([\\][\\])#)|((#s)|([^\\])([\\][\\])#)) /${match[2]:+$match[3]$match[4] }${match[5]:+$match[6]${(l:${#match[7]}/2::\\:):-} }} )
-        if [[ ${#files} -eq 0 && -n ${extract##(\!-|-\!|\!|-)} ]] {
-                +zi-log "{error}ERROR:{msg2} The files" \
-                        "(\`{file}${extract##(\!-|-\!|\!|-)}{msg2}')" \
-                        "not found, cannot extract.{rst}"
-                return 1
-        } else {
-            (( !${#files} )) && files=( "" )
-        }
+        files=(${(@)${(@s: :)${extract##(\!-|-\!|\!|-)}}//(#b)(((#s)|([^\\])[\\]([\\][\\])#)|((#s)|([^\\])([\\][\\])#)) /${match[2]:+$match[3]$match[4] }${match[5]:+$match[6]${(l:${#match[7]}/2::\\:):-} }})
+        if [[ ${#files} -eq 0 && -n ${extract##(\!-|-\!|\!|-)} ]]; then
+            +zi-log "{error}ERROR:{msg2} The files" "(\`{file}${extract##(\!-|-\!|\!|-)}{msg2}')" "not found, cannot extract.{rst}"
+            return 1
+        else
+            (( !${#files} )) && files=("")
+        fi
         local file
-        for file ( "${files[@]}" ) {
+        for file in "${files[@]}"; do
             [[ -z $extract ]] && local auto2=--auto
-            ziextract ${${(M)extract:#(\!|-)##}:+--auto} \
-                $auto2 $file \
-                ${${(MS)extract[1,2]##-}:+--norm} \
-                ${${(MS)extract[1,2]##\!}:+--move} \
-                ${${(MS)extract[1,2]##\!\!}:+--move2} \
-                ${${${#files}:#1}:+--nobkp}
-        }
-    )
+            ziextract ${${(M)extract:#(\!|-)##}:+--auto} $auto2 $file ${${(MS)extract[1,2]##-}:+--norm} ${${(MS)extract[1,2]##\!}:+--move} ${${(MS)extract[1,2]##\!\!}:+--move2} ${${${#files}:#1}:+--nobkp}
+        done
+    ) # "`
 } # ]]]
 # FUNCTION: .zinit-at-eval [[[
 .zinit-at-eval() {
@@ -1979,153 +1960,140 @@ zimv() {
 } # ]]]
 # FUNCTION: ∞zinit-reset-hook [[[
 ∞zinit-reset-hook() {
-    # File
-    if [[ "$1" = plugin ]] {
-        local type="$1" user="$2" plugin="$3" id_as="$4" dir="${5#%}" hook="$6"
-    } else {
-        local type="$1" url="$2" id_as="$3" dir="${4#%}" hook="$5"
-    }
-    if (( ( OPTS[opt_-r,--reset] && ZINIT[-r/--reset-opt-hook-has-been-run] == 0 ) || \
-        ( ${+ICE[reset]} && ZINIT[-r/--reset-opt-hook-has-been-run] == 1 )
-    )) {
-        if (( ZINIT[-r/--reset-opt-hook-has-been-run] )) {
-            local msg_bit="{meta}reset{msg2} ice given{pre}" option=
-        } else {
-            local msg_bit="{meta2}-r/--reset{msg2} given to \`{meta}update{pre}'" option=1
-        }
-        if [[ $type == snippet ]] {
-            if (( $+ICE[svn] )) {
-                if [[ $skip_pull -eq 0 && -d $filename/.svn ]] {
-                    (( !OPTS[opt_-q,--quiet] )) && +zi-log "{pre}reset ($msg_bit): {msg2}Resetting the repository ($msg_bit) with command: {rst}svn revert --recursive {…}/{file}$filename/.{rst} {…}"
-                    command svn revert --recursive $filename/.
-                }
-            } else {
-                if (( ZINIT[annex-multi-flag:pull-active] >= 2 )) {
-                    if (( !OPTS[opt_-q,--quiet] )) {
-                        if [[ -f $local_dir/$dirname/$filename ]] {
-                            if [[ -n $option || -z $ICE[reset] ]] {
-                                +zi-log "{pre}reset ($msg_bit):{msg2} Removing the snippet-file: {file}$filename{msg2} {…}{rst}"
-                            } else {
-                                +zi-log "{pre}reset ($msg_bit):{msg2} Removing the snippet-file: {file}$filename{msg2}," \
-                                    "with the supplied code: {data2}$ICE[reset]{msg2} {…}{rst}"
-                            }
-                            if (( option )) {
-                                command rm -f "$local_dir/$dirname/$filename"
-                            } else {
-                                eval "${ICE[reset]:-rm -f \"$local_dir/$dirname/$filename\"}"
-                            }
-                        } else {
-                            +zi-log "{pre}reset ($msg_bit):{msg2} The file {file}$filename{msg2} is already deleted {…}{rst}"
-                            if [[ -n $ICE[reset] && ! -n $option ]] {
-                                +zi-log "{pre}reset ($msg_bit):{msg2} (skipped running the provided reset-code:" \
-                                    "{data2}$ICE[reset]{msg2}){rst}"
-                            }
-                        }
-                    }
-                } else {
-                        [[ -f $local_dir/$dirname/$filename ]] && \
-                            +zi-log "{pre}reset ($msg_bit): {msg2}Skipping the removal of {file}$filename{msg2}" \
-                                 "as there is no new copy scheduled for download.{rst}" || \
-                            +zi-log "{pre}reset ($msg_bit): {msg2}The file {file}$filename{msg2} is already deleted" \
-                                "and {ehi}no new download is being scheduled.{rst}"
-                }
-            }
-        } elif [[ $type == plugin ]] {
-            if (( is_release && !skip_pull )) {
-                if (( option )) {
-                    (( !OPTS[opt_-q,--quiet] )) && +zi-log "{pre}reset ($msg_bit): {msg2}running: {rst}rm -rf ${${ZINIT[PLUGINS_DIR]:#[/[:space:]]##}:-${TMPDIR:-/tmp}/xyzabc312}/${${(M)${local_dir##${ZINIT[PLUGINS_DIR]}[/[:space:]]#}:#[^/]*}:-${TMPDIR:-/tmp}/xyzabc312-zinit-protection-triggered}/*"
-                    builtin eval command rm -rf ${${ZINIT[PLUGINS_DIR]:#[/[:space:]]##}:-${TMPDIR:-/tmp}/xyzabc312}/"${${(M)${local_dir##${ZINIT[PLUGINS_DIR]}[/[:space:]]#}:#[^/]*}:-${TMPDIR:-/tmp}/xyzabc312-zinit-protection-triggered}"/*(ND)
-                } else {
-                    (( !OPTS[opt_-q,--quiet] )) && +zi-log "{pre}reset ($msg_bit): {msg2}running: {rst}${ICE[reset]:-rm -rf ${${ZINIT[PLUGINS_DIR]:#[/[:space:]]##}:-${TMPDIR:-/tmp}/xyzabc312}/${${(M)${local_dir##${ZINIT[PLUGINS_DIR]}[/[:space:]]#}:#[^/]*}:-${TMPDIR:-/tmp}/xyzabc312-zinit-protection-triggered}/*}"
-                    builtin eval ${ICE[reset]:-command rm -rf ${${ZINIT[PLUGINS_DIR]:#[/[:space:]]##}:-${TMPDIR:-/tmp}/xyzabc312}/"${${(M)${local_dir##${ZINIT[PLUGINS_DIR]}[/[:space:]]#}:#[^/]*}:-${TMPDIR:-/tmp}/xyzabc312-zinit-protection-triggered}"/*(ND)}
-                }
-            } elif (( !skip_pull )) {
-                if (( option )) {
-                    +zi-log "{pre}reset ($msg_bit): {msg2}Resetting the repository with command:{rst} git reset --hard HEAD {…}"
-                    command git reset --hard HEAD
-                } else {
-                    +zi-log "{pre}reset ($msg_bit): {msg2}Resetting the repository with command:{rst} ${ICE[reset]:-git reset --hard HEAD} {…}"
-                    builtin eval "${ICE[reset]:-git reset --hard HEAD}"
-                }
-            }
-        }
-    }
-
-    if (( OPTS[opt_-r,--reset] )) {
-        if (( ZINIT[-r/--reset-opt-hook-has-been-run] == 1 )) {
-            ZINIT[-r/--reset-opt-hook-has-been-run]=0
-        } else {
-            ZINIT[-r/--reset-opt-hook-has-been-run]=1
-        }
-    } else {
-        # If theres no -r/--reset, pretend that it already has been served.
-        ZINIT[-r/--reset-opt-hook-has-been-run]=1
-    }
+  if [[ "$1" = plugin ]]; then
+    local type="$1" user="$2" plugin="$3" id_as="$4" dir="${5#%}" hook="$6"
+  else
+    local type="$1" url="$2" id_as="$3" dir="${4#%}" hook="$5"
+  fi
+  if (( ( OPTS[opt_-r,--reset] && ZINIT[-r/--reset-opt-hook-has-been-run] == 0 ) ||         ( ${+ICE[reset]} && ZINIT[-r/--reset-opt-hook-has-been-run] == 1 )
+    )); then
+    if (( ZINIT[-r/--reset-opt-hook-has-been-run] )); then
+      local msg_bit="{meta}reset{msg2} ice given{pre}" option=
+    else
+      local msg_bit="{meta2}-r/--reset{msg2} given to \`{meta}update{pre}'" option=1
+    fi
+    if [[ $type == snippet ]]; then
+      if (( $+ICE[svn] )); then
+        if [[ $skip_pull -eq 0 && -d $filename/.svn ]]; then
+          (( !OPTS[opt_-q,--quiet] )) && +zi-log "{pre}reset ($msg_bit): {msg2}Resetting the repository ($msg_bit) with command: {rst}svn revert --recursive {…}/{file}$filename/.{rst} {…}"
+          command svn revert --recursive $filename/.
+        fi
+      else
+        if (( ZINIT[annex-multi-flag:pull-active] >= 2 )); then
+          if (( !OPTS[opt_-q,--quiet] )); then
+            if [[ -f $local_dir/$dirname/$filename ]]; then
+              if [[ -n $option || -z $ICE[reset] ]]; then
+                +zi-log "{pre}reset ($msg_bit):{msg2} Removing the snippet-file: {file}$filename{msg2} {…}{rst}"
+              else
+                +zi-log "{pre}reset ($msg_bit):{msg2} Removing the snippet-file: {file}$filename{msg2}," "with the supplied code: {data2}$ICE[reset]{msg2} {…}{rst}"
+              fi
+              if (( option )); then
+                command rm -f "$local_dir/$dirname/$filename"
+              else
+                eval "${ICE[reset]:-rm -f \"$local_dir/$dirname/$filename\"}"
+              fi
+            else
+              +zi-log "{pre}reset ($msg_bit):{msg2} The file {file}$filename{msg2} is already deleted {…}{rst}"
+              if [[ -n $ICE[reset] && ! -n $option ]]; then
+                +zi-log "{pre}reset ($msg_bit):{msg2} (skipped running the provided reset-code:" "{data2}$ICE[reset]{msg2}){rst}"
+              fi
+            fi
+          fi
+        else
+          [[ -f $local_dir/$dirname/$filename ]] && +zi-log "{pre}reset ($msg_bit): {msg2}Skipping the removal of {file}$filename{msg2}" "as there is no new copy scheduled for download.{rst}" || +zi-log "{pre}reset ($msg_bit): {msg2}The file {file}$filename{msg2} is already deleted" "and {ehi}no new download is being scheduled.{rst}"
+        fi
+      fi
+    elif [[ $type == plugin ]]; then
+      if (( is_release && !skip_pull )); then
+        if (( option )); then
+          (( !OPTS[opt_-q,--quiet] )) && +zi-log "{pre}reset ($msg_bit): {msg2}running: {rst}rm -rf ${${ZINIT[PLUGINS_DIR]:#[/[:space:]]##}:-${TMPDIR:-/tmp}/xyzabc312}/${${(M)${local_dir##${ZINIT[PLUGINS_DIR]}[/[:space:]]#}:#[^/]*}:-${TMPDIR:-/tmp}/xyzabc312-zinit-protection-triggered}/*"
+          builtin eval command rm -rf ${${ZINIT[PLUGINS_DIR]:#[/[:space:]]##}:-${TMPDIR:-/tmp}/xyzabc312}/"${${(M)${local_dir##${ZINIT[PLUGINS_DIR]}[/[:space:]]#}:#[^/]*}:-${TMPDIR:-/tmp}/xyzabc312-zinit-protection-triggered}"/*(ND)
+        else
+          (( !OPTS[opt_-q,--quiet] )) && +zi-log "{pre}reset ($msg_bit): {msg2}running: {rst}${ICE[reset]:-rm -rf ${${ZINIT[PLUGINS_DIR]:#[/[:space:]]##}:-${TMPDIR:-/tmp}/xyzabc312}/${${(M)${local_dir##${ZINIT[PLUGINS_DIR]}[/[:space:]]#}:#[^/]*}:-${TMPDIR:-/tmp}/xyzabc312-zinit-protection-triggered}/*}"
+          builtin eval ${ICE[reset]:-command rm -rf ${${ZINIT[PLUGINS_DIR]:#[/[:space:]]##}:-${TMPDIR:-/tmp}/xyzabc312}/"${${(M)${local_dir##${ZINIT[PLUGINS_DIR]}[/[:space:]]#}:#[^/]*}:-${TMPDIR:-/tmp}/xyzabc312-zinit-protection-triggered}"/*(ND)}
+        fi
+      elif (( !skip_pull )); then
+        if (( option )); then
+          +zi-log "{pre}reset ($msg_bit): {msg2}Resetting the repository with command:{rst} git reset --hard HEAD {…}"
+          command git reset --hard HEAD
+        else
+          +zi-log "{pre}reset ($msg_bit): {msg2}Resetting the repository with command:{rst} ${ICE[reset]:-git reset --hard HEAD} {…}"
+          builtin eval "${ICE[reset]:-git reset --hard HEAD}"
+        fi
+      fi
+    fi
+  fi
+  if (( OPTS[opt_-r,--reset] )); then
+    if (( ZINIT[-r/--reset-opt-hook-has-been-run] == 1 )); then
+      ZINIT[-r/--reset-opt-hook-has-been-run]=0
+    else
+      ZINIT[-r/--reset-opt-hook-has-been-run]=1
+    fi
+  else
+    ZINIT[-r/--reset-opt-hook-has-been-run]=1
+  fi
 } # ]]]
 # FUNCTION: ∞zinit-configure-base-hook [[[
-# A base common implementation of the configure ice
 ∞zinit-configure-base-hook () {
-    emulate -L zsh
-    setopt extendedglob
-    if [[ "$1" = plugin ]]; then
-        local dir="${5#%}" hook="$6" subtype="$7" ex="$8"
+  emulate -L zsh
+  setopt extendedglob
+  if [[ "$1" = plugin ]]; then
+    local dir="${5#%}" hook="$6" subtype="$7" ex="$8"
+  else
+    local dir="${4#%}" hook="$5" subtype="$6" ex="$7"
+  fi
+  local flags configure eflags aflags ice='{b}configure{rst}:'
+  configure=${ICE[configure]}
+  @zinit-substitute configure
+  (( ${+ICE[configure]} )) || return 0
+  local -a flags=(${(s::QO)${(M)configure##[a\!\#\:]##}})
+  local -a cfg=(${(zS)${(m)configure##[a\!\#\:]##}})
+  typeset -aU configure_opt=($cfg)
+  if (( ${#${(@z)${(j: :)${(M)configure:#--prefix(?|)*}}//--prefix [\/~][^ ]##}} )); then
+    configure_opt+=("--prefix=${ZPFX:-${ZINIT[HOME_DIR]}/polaris}")
+  fi
+  +zi-log "{dbg} {nl}flags $#flags | ${(@)flags}{nl}configure => $#cfg[@] | ${(@)cfg}"
+  [[ $eflags == $ex ]] || return 0
+  local quiet=">/dev/null 2>&1"
+  if (( ZINIT[DEBUG] )); then
+    quiet=
+  fi
+  {
+    builtin cd -- "$dir" || return 1
+    if [[ -z *(#i)configure(#qN) || -n ${flags[(Ie)a]} ]]; then
+      if (( $flags[(Ie)a] )); then
+        {
+          +zi-log -n "{i} ${ice} autoreconf to generate configure script... "
+          zsh --nozle -c "(autoreconf --make) ${quiet}"
+        } always {
+          [[ -n *(#i)configure(#qN) ]] && +zi-log "{ok}[OK]{rst}" || +zi-log "{err}[FAILED]{rst}"
+        }
+      else
+        +zi-log "{i} ${ice} Attempting to generate configure script... "
+        local c
+        for c in "[[ -e autogen.sh ]] && sh ./autogen.sh" "[[ -n *.a[mc](#qN.) ]] && autoreconf -ifm" "git clean -fxd; aclocal --force; autoconf --force; automake --add-missing --copy --force-missing"; do
+          +zi-log -PrD "{dbg} ${ice} {faint}${c}{rst}"
+          {
+            zsh --nozle -c "(${c}) ${quiet}"
+          } always {
+            [[ -n *(#i)configure(#qN) ]] && break
+            (( TRY_BLOCK_ERROR = 0 ))
+          }
+        done
+      fi
+    fi
+    local cmd="(./configure ${(S)configure_opt[@]}) ${quiet}"
+    +zi-log "{dbg} ${cmd}"
+    +zi-log -n "{i} ${ice} Generating Makefile"
+    zsh --nozle -c ${cmd}
+    local cfg_ret=$?
+    if [[ -n *(#i)makefile(#qN) ]]; then
+      +zi-log " {happy}[OK]{rst}"
     else
-        local dir="${4#%}" hook="$5" subtype="$6" ex="$7"
+      +zi-log " {err}[FAILED]{rst}"
     fi
-    local flags configure eflags aflags ice='{b}configure{rst}:'
-    configure=${ICE[configure]}
-    @zinit-substitute configure
-    (( ${+ICE[configure]} )) || return 0
-
-    local -a flags=(${(s::QO)${(M)configure##[a\!\#\:]##}})
-    local -a cfg=( ${(zS)${(m)configure##[a\!\#\:]##}} )
-    typeset -aU configure_opt=( $cfg )
-    if (( ${#${(@z)${(j: :)${(M)configure:#--prefix(?|)*}}//--prefix [\/~][^ ]##}} )); then
-      configure_opt+=("--prefix=${ZPFX:-${ZINIT[HOME_DIR]}/polaris}")
-    fi
-    +zi-log "{dbg} {nl}flags $#flags | ${(@)flags}{nl}configure => $#cfg[@] | ${(@)cfg}"
-    [[ $eflags == $ex ]] || return 0
-
-    local quiet=">/dev/null 2>&1"
-    if (( ZINIT[DEBUG] )); then
-        quiet=
-    fi
-    {
-        builtin cd -- "$dir" || return 1
-        if [[ -z *(#i)configure(#qN) || ${flags[(Ie)a]}  ]]; then
-            if (( $flags[(Ie)a] )); then
-              {
-                  +zi-log -n "{i} ${ice} autoreconf to generate configure script... "
-                  zsh --nozle -c "(autoreconf --make) ${quiet}"
-              } always {
-                  [[ -n *(#i)configure(#qN) ]] && +zi-log "{ok}[OK]{rst}" || +zi-log "{err}[FAILED]{rst}"
-              }
-            else
-                +zi-log "{i} ${ice} Attempting to generate configure script... "
-                local c
-                for c in "[[ -e autogen.sh ]] && sh ./autogen.sh" "[[ -n *.a[mc](#qN.) ]] && autoreconf -ifm" "git clean -fxd; aclocal --force; autoconf --force; automake --add-missing --copy --force-missing"; do
-                    +zi-log -PrD "{dbg} ${ice} {faint}${c}{rst}"
-                    {
-                        zsh --nozle -c "(${c}) ${quiet}"
-                    } always {
-                        [[ -n *(#i)configure(#qN) ]] && break
-                        (( TRY_BLOCK_ERROR = 0 ))
-                    }
-                done
-            fi
-        fi
-        local cmd="(./configure ${(S)configure_opt[@]}) ${quiet}"
-        +zi-log "{dbg} ${cmd}"
-        +zi-log -n "{i} ${ice} Generating Makefile"
-        zsh --nozle -c ${cmd}
-        local cfg_ret=$?
-        if [[ -n *(#i)makefile(#qN) ]]; then
-            +zi-log " {happy}[OK]{rst}"
-        else
-            +zi-log " {err}[FAILED]{rst}"
-        fi
-        return $cfg_ret
-    }
+    return $cfg_ret
+  }
 } # ]]]
 # FUNCTION: ∞zinit-configure-e-hook [[[
 ∞zinit-configure-e-hook() {
@@ -2142,65 +2110,61 @@ zimv() {
 # FUNCTION: ∞zinit-make-base-hook [[[
 # A base common implementation of the make ice
 ∞zinit-make-base-hook () {
-    emulate -L zsh
-    setopt extendedglob
-    [[ -z $ICE[make] ]] && return 0
-    if [[ "$1" = plugin ]]; then
-        local dir="${5#%}" hook="$6" subtype="$7" ex="$8"
-    else
-        local dir="${4#%}" hook="$5" subtype="$6" ex="$7"
+  emulate -L zsh
+  setopt extendedglob
+  [[ -z $ICE[make] ]] && return 0
+  if [[ "$1" = plugin ]]; then
+    local dir="${5#%}" hook="$6" subtype="$7" ex="$8"
+  else
+    local dir="${4#%}" hook="$5" subtype="$6" ex="$7"
+  fi
+  local make=${ICE[make]} ice='{b}make{rst}:'
+  @zinit-substitute make
+  (( ${+ICE[make]} )) || return 0
+  local eflags=${(M)make##[\!]##}
+  make=${make##${eflags}}
+  [[ $ex == $eflags ]] || return 0
+  local make_prefix='prefix'
+  if grep -w -- "PREFIX =" ${dir}/[Mm]akefile > /dev/null; then
+    make_prefix="PREFIX"
+  fi
+  local src=($dir/[Cc][Mm]ake*(N.om[1]))
+  if (( $#src )); then
+    +zi-log "{m} ${ice} Detected Cmake project, using CMAKE_INSTALL_PREFIX={file}\$ZPFX{rst}"
+    make_prefix="CMAKE_INSTALL_PREFIX"
+  else
+    +zi-log -ru2 -- "{dbg} ${dir:t}: No Cmake files found in ${dir}"
+  fi
+  local quiet=">/dev/null 2>&1"
+  if (( ZINIT[DEBUG] )); then
+    quiet=
+  fi
+  local -i ret=0
+  {
+    build="command make -j8 -C${dir} ${make} ${quiet}"
+    +zi-log "{m} ${ice} Building ${dir}..."
+    +zi-log "{dbg} ${ice} $build"
+    zsh --nozle -c ${build} $quiet
+    ret=$?
+  } always {
+    if (( ret )); then
+      +zi-log "{w} ${ice} Build returned {num}${ret}{rst}"
     fi
-    local make=${ICE[make]} ice='{b}make{rst}:'
-    @zinit-substitute make
-    (( ${+ICE[make]} )) || return 0
-    local eflags=${(M)make##[\!]##}
-    make=${make##${eflags}}
-
-    [[ $ex == $eflags ]] || return 0
-    local make_prefix='prefix'
-    if grep -w -- "PREFIX =" ${dir}/[Mm]akefile > /dev/null; then
-        make_prefix="PREFIX"
+    (( TRY_BLOCK_ERROR = 0 ))
+  }
+  {
+    install="${build} install"
+    +zi-log "{m} ${ice} Installing in ${(D)ZINIT[ZPFX]}"
+    +zi-log "{dbg} ${ice} ${install}"
+    zsh --nozle -c ${install} ${quiet}
+    ret=$?
+  } always {
+    if (( ret )); then
+      +zi-log "{w} ${ice} Install returned {num}${ret}{rst}"
     fi
-    local src=($dir/[Cc][Mm]ake*(N.om[1]))
-    if (( $#src )); then
-        +zi-log "{m} ${ice} Detected Cmake project, using CMAKE_INSTALL_PREFIX={file}\$ZPFX{rst}"
-        make_prefix="CMAKE_INSTALL_PREFIX"
-    else
-        +zi-log -ru2 -- "{dbg} ${dir:t}: No Cmake files found in ${dir}"
-    fi
-    # local prefix="${ZINIT[ZPFX]}"
-    local quiet=">/dev/null 2>&1"
-    if (( ZINIT[DEBUG] )); then
-        quiet=
-    fi
-    local -i ret=0
-    {
-        build="command make -j8 -C${dir} ${make} ${quiet}"
-        # build="$make_prefix=$prefix command make $make_prefix=$prefix -j -C${dir} ${quiet}"
-        +zi-log "{m} ${ice} Building ${dir}..."
-        +zi-log "{dbg} ${ice} $build"
-        zsh --nozle -c ${build} $quiet
-        ret=$?
-    } always {
-        if (( ret )); then
-            +zi-log "{w} ${ice} Build returned {num}${ret}{rst}"
-        fi
-        (( TRY_BLOCK_ERROR = 0 ))
-    }
-    {
-        # install="$make_prefix=$prefix ${build} $make_prefix=$prefix ${make} ${make_prefix}=${prefix}"
-        install="${build} install"
-        +zi-log "{m} ${ice} Installing in ${(D)ZINIT[ZPFX]}"
-        +zi-log "{dbg} ${ice} ${install}"
-        zsh --nozle -c ${install} ${quiet}
-        ret=$?
-    } always {
-        if (( ret )); then
-            +zi-log "{w} ${ice} Install returned {num}${ret}{rst}"
-        fi
-        (( TRY_BLOCK_ERROR = 0 ))
-    }
-    return $ret
+    (( TRY_BLOCK_ERROR = 0 ))
+  }
+  return $ret
 } # ]]]
 # FUNCTION: ∞zinit-make-e-hook [[[
 ∞zinit-make-e-hook() {
