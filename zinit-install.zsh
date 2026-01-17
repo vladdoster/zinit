@@ -2118,16 +2118,16 @@ zimv() {
   else
     local dir="${4#%}" hook="$5" subtype="$6" ex="$7"
   fi
-  local make=${ICE[make]} ice='{b}make{rst}:'
+  local ice='{b}make{rst}:' make_prefix='prefix'
+  if grep -owE '(^prefix)' ${dir}/[Mm]akefile > /dev/null; then
+    ICE[make]=${ICE[make]//(#m)PREFIX/${(L)MATCH}}
+  fi
+  local make=${ICE[make]}
   @zinit-substitute make
   (( ${+ICE[make]} )) || return 0
   local eflags=${(M)make##[\!]##}
   make=${make##${eflags}}
   [[ $ex == $eflags ]] || return 0
-  local make_prefix='prefix'
-  if grep -w -- "PREFIX =" ${dir}/[Mm]akefile > /dev/null; then
-    make_prefix="PREFIX"
-  fi
   local src=($dir/[Cc][Mm]ake*(N.om[1]))
   if (( $#src )); then
     +zi-log "{m} ${ice} Detected Cmake project, using CMAKE_INSTALL_PREFIX={file}\$ZPFX{rst}"
