@@ -2064,7 +2064,7 @@ zimv() {
       if (( $flags[(Ie)a] )); then
         {
           +zi-log -n "{i} ${ice} autoreconf to generate configure script... "
-          zsh --nozle -c "(autoreconf --make --install)" ${quiet}
+          zsh --nozle -c "(autoreconf --make --install) ${quiet}"
         } always {
           [[ -n *(#i)configure(#qN) ]] && +zi-log "{ok}[OK]{rst}" || +zi-log "{err}[FAILED]{rst}"
         }
@@ -2074,7 +2074,7 @@ zimv() {
         for c in "[[ -e autogen.sh ]] && sh ./autogen.sh" "[[ -n *.a[mc](#qN.) ]] && autoreconf --install --make" "git clean -fxd; aclocal --force; autoconf --force; automake --add-missing --copy --force-missing"; do
           +zi-log -PrD "{dbg} ${ice} {faint}${c}{rst}"
           {
-            zsh --nozle -c "(${c})" ${quiet}
+            zsh --nozle -c "(${c}) ${quiet}"
           } always {
             [[ -n *(#i)configure(#qN) ]] && break
             (( TRY_BLOCK_ERROR = 0 ))
@@ -2085,7 +2085,7 @@ zimv() {
     local cmd="(./configure ${(S)configure_opt[@]})"
     +zi-log "{dbg} ${cmd}"
     +zi-log -n "{i} ${ice} Generating Makefile"
-    zsh --nozle -c ${cmd} $quiet
+    zsh --nozle -c "${cmd} $quiet"
     local cfg_ret=$?
     if [[ -n *(#i)makefile(#qN) ]]; then
       +zi-log " {happy}[OK]{rst}"
