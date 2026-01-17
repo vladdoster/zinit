@@ -2144,7 +2144,7 @@ zimv() {
     build="command make -j8 -C${dir}"
     +zi-log "{m} ${ice} Building ${dir}..."
     +zi-log "{dbg} ${ice} $build"
-    zsh --nozle -c ${build} $quiet
+    zsh --nozle -c "(${build})" $quiet
     ret=$?
   } always {
     if (( ret )); then
@@ -2156,7 +2156,7 @@ zimv() {
     install="${build} ${(uz)make}"
     +zi-log "{m} ${ice} Installing in ${(D)ZINIT[ZPFX]}"
     +zi-log "{dbg} ${ice} ${install}"
-    zsh --nozle -c ${install} ${quiet}
+    zsh --nozle -c "(${install})" $quiet
     ret=$?
   } always {
     if (( ret )); then
