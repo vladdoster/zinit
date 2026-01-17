@@ -3,6 +3,7 @@
 @setup {
   HOME="$zi_test_dir"
   typeset -gx ZBIN="$zi_test_dir/polaris/bin"
+  ZINIT[DEBUG]=1
 }
 
 @test 'bash' {
