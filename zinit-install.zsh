@@ -2119,7 +2119,7 @@ zimv() {
     local dir="${4#%}" hook="$5" subtype="$6" ex="$7"
   fi
   local ice='{b}make{rst}:' make_prefix='prefix'
-  if grep -owE '(^prefix)' ${dir}/[Mm]akefile > /dev/null; then
+  if [[ -n *(#i)makefile(#qN) ]] && grep -owE '(^prefix)' ${dir}/[Mm]akefile > /dev/null; then
     ICE[make]=${ICE[make]//(#m)PREFIX/${(L)MATCH}}
   fi
   local make=${ICE[make]}

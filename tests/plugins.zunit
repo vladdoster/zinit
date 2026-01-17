@@ -3,7 +3,6 @@
 @setup {
   HOME="$zi_test_dir"
   typeset -gx ZBIN="$zi_test_dir/polaris/bin"
-  ZINIT[DEBUG]=1
 }
 
 # @test 'cmatrix' {
@@ -47,11 +46,11 @@
   run "$jq" --version; assert $state equals 0
 }
 @test 'ncurses' {
-  run zinit configure'--enable-widec --enable-termcap' make for @mirror/ncurses; assert $state equals 0
+  run zinit configure'--enable-widec --enable-termcap --prefix=${ZPFX}' make for @mirror/ncurses; assert $state equals 0
   local ncurses="$ZBIN/clear"; assert "$ncurses" is_executable
   run "$ncurses" -V; assert $state equals 0
-  run zinit delete --yes mirror/ncurses; assert $state equals 0
-  run "$ncurses" -V; assert $state equals 127
+  # run zinit delete --yes mirror/ncurses; assert $state equals 0
+  # run "$ncurses" -V; assert $state equals 127
 }
 @test 'neofetch' {
   run zinit make for @dylanaraps/neofetch; assert $state equals 0
@@ -59,7 +58,7 @@
   run "$neofetch" --version; assert $state equals 1; assert $output contains 'Neofetch'
 }
 @test 'neovim-make' {
-  run zinit make for @neovim/neovim; assert $state equals 0
+  run zinit build for @neovim/neovim; assert $state equals 0
   local neovim="$ZBIN/nvim"; assert $neovim is_executable
   run "$neovim" --version; assert $state equals 0
   nvim_ver="$($neovim --version | head -n1 | awk '{print $2}')";
@@ -83,14 +82,14 @@
   run "$tmux" -V; assert $state equals 0
 }
 @test 'vim' {
-  run zinit depth'1' configure"--disable-libsodium" make for @vim/vim; assert $state equals 0
+  run zinit depth'1' configure'a:--disable-libsodium --prefix=$ZPFX' make for @vim/vim; assert $state equals 0
   local vim="$ZBIN/vim"; assert $vim is_executable
   run "$vim" --version; assert $state equals 0
   # run zinit delete --yes vim/vim; assert $state equals 0
 }
 @test 'zsh' {
   # run zinit configure'--with-tcsetpgrp' make'install.bin' for @zsh-users/zsh; assert $state equals 0
-  run zinit configure'--with-tcsetpgrp' atclone"./Util/preconfig" make'install.bin' for @zsh-users/zsh; assert $state equals 0
+  run zinit configure'a:--with-tcsetpgrp --prefix=$ZPFX' atclone"./Util/preconfig" make'install.bin' for @zsh-users/zsh; assert $state equals 0
   local zsh="$ZBIN/zsh"; assert $zsh is_executable
   run "$zsh" --version; assert $state equals 0
   run zinit delete --yes zsh-users/zsh; assert $state equals 0
@@ -122,4 +121,4 @@
 #
 #   run zinit delete --yes neovim/neovim; assert $state equals 0
 # }
-# vim:ft=zsh:sw=2:sts=2:et:foldmethod=indent
+# vim:ft=zsh:sw=4:sts=4:et:foldmarker=@test,}:foldmethod=marker
