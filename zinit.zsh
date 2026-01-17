@@ -2293,7 +2293,7 @@ $match[7]}:-${ZINIT[__last-formatter-code]}}}:+}}}//←→}
         ZINIT_ICES[null]=
     fi
     (( $+ZINIT_ICES[configure] )) && ZINIT_ICES[configure]="${ZINIT_ICES[configure]:-'--prefix=${ZPFX}'}"
-    (( $+ZINIT_ICES[make] )) && ZINIT_ICES[make]="${ZINIT_ICES[make]:-PREFIX=${ZPFX}}"
+    (( $+ZINIT_ICES[make] )) && ZINIT_ICES[make]="${ZINIT_ICES[make]:-PREFIX=${ZPFX} install}"
     return retval
 } # ]]]
 # FUNCTION: .zinit-pack-ice [[[
