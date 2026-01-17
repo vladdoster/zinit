@@ -948,13 +948,15 @@ ZINIT[EXTENDED_GLOB]=""
 # installed and enabled.
 #
 # User-action entry point.
-.zinit-clear-completions() {
+.zinit-clear-completions () {
+    builtin emulate -LR zsh -o extendedglob ${=${options[xtrace]:#off}:+-o xtrace}
     builtin setopt localoptions nullglob extendedglob nokshglob noksharrays
-
+    local o_quiet=
+    local -a usage=('Options:' '  -q, --quiet    Make some output more quiet')
+    zmodload zsh/zutil
+    zparseopts -D -E -F -K -- {q,-quiet}=o_quiet || return 1
     typeset -a completions
-    completions=( "${ZINIT[COMPLETIONS_DIR]}"/_[^_.]*~*.zwc "${ZINIT[COMPLETIONS_DIR]}"/[^_.]*~*.zwc )
-
-    # Find longest completion name
+    completions=("${ZINIT[COMPLETIONS_DIR]}"/_[^_.]*~*.zwc "${ZINIT[COMPLETIONS_DIR]}"/[^_.]*~*.zwc)
     local cpath c
     integer longest=0
     for cpath in "${completions[@]}"; do
@@ -962,38 +964,36 @@ ZINIT[EXTENDED_GLOB]=""
         c="${c#_}"
         [[ "${#c}" -gt "$longest" ]] && longest="${#c}"
     done
-
     .zinit-prepare-readlink
     local rdlink="$REPLY"
-
     integer disabled unknown stray
+    local -a del_comps=()
     for cpath in "${completions[@]}"; do
         c="${cpath:t}"
-        [[ "${c#_}" = "${c}" ]] && disabled=1 || disabled=0
+        [[ "${c#_}" = "${c}" ]] && disabled=1  || disabled=0
         c="${c#_}"
-
-        # This will resolve completion's symlink to obtain
-        # information about the repository it comes from, i.e.
-        # about user and plugin, taken from directory name
         .zinit-get-completion-owner "$cpath" "$rdlink"
-        [[ "$REPLY" = "[unknown]" ]] && unknown=1 || unknown=0
+        [[ "$REPLY" = "[unknown]" ]] && unknown=1  || unknown=0
         .zinit-any-colorify-as-uspl2 "$REPLY"
-
-        # If we successfully read a symlink (unknown == 0), test if it isn't broken
         stray=0
         if (( unknown == 0 )); then
             [[ ! -f "$cpath" ]] && stray=1
         fi
-
         if (( unknown == 1 || stray == 1 )); then
-            builtin print -n "Removing completion: ${(r:longest+1:: :)c} $REPLY"
-            (( disabled )) && builtin print -n " ${ZINIT[col-error]}[disabled]${ZINIT[col-rst]}"
-            (( unknown )) && builtin print -n " ${ZINIT[col-error]}[unknown file]${ZINIT[col-rst]}"
-            (( stray )) && builtin print -n " ${ZINIT[col-error]}[stray]${ZINIT[col-rst]}"
-            builtin print
+            del_comps+=($c)
+            (( $#o_quiet )) || {
+                +zi-log -n "{m} Removing completion: ${(r:longest+1:: :)c}"
+                (( disabled )) && builtin print -n " ${ZINIT[col-error]}[disabled]${ZINIT[col-rst]}"
+                (( unknown )) && builtin print -n " ${ZINIT[col-error]}[unknown file]${ZINIT[col-rst]}"
+                (( stray )) && builtin print -n " ${ZINIT[col-error]}[stray]${ZINIT[col-rst]}"
+                builtin print
+            }
             command rm -f "$cpath"
         fi
     done
+    (( ${#del_comps[@]} > 0 && !$#o_quiet )) && {
+        +zi-log "{m} Removed ${#del_comps[@]} completions"
+    }
 } # ]]]
 
 # FUNCTION: .zinit-compile-plugin [[[
@@ -1352,27 +1352,9 @@ EOF
     setopt extended_glob no_ksh_arrays no_ksh_glob typeset_silent warn_create_global
     +zi-log "{dbg} $0: ${(qqS)@}"
     local o_all o_clean o_debug o_help o_quiet o_yes rc
-    local -a usage=(
-        'Usage:'
-        '  zinit delete [options] [plugins...]'
-        ' '
-        'Options:'
-        '  -a, --all      Delete all installed plugins, snippets, and completions'
-        '  -c, --clean    Delete unloaded plugins and snippets'
-        '  -d, --debug    Enable debug mode'
-        '  -h, --help     Show list of command-line options'
-        '  -q, --quiet    Make some output more quiet'
-        '  -y, --yes      Don´t prompt for user confirmation'
-    )
+    local -a usage=('Usage:' '  zinit delete [options] [plugins...]' ' ' 'Options:' '  -a, --all      Delete all installed plugins, snippets, and completions' '  -c, --clean    Delete unloaded plugins and snippets' '  -d, --debug    Enable debug mode' '  -h, --help     Show list of command-line options' '  -q, --quiet    Make some output more quiet' '  -y, --yes      Don´t prompt for user confirmation')
     zmodload zsh/zutil
-    zparseopts -D -E -F -K -- \
-        {a,-all}=o_all \
-        {c,-clean}=o_clean \
-        {d,-debug}=o_debug \
-        {h,-help}=o_help \
-        {q,-quiet}=o_quiet \
-        {y,-yes}=o_yes \
-    || return 1
+    zparseopts -D -E -F -K -- {a,-all}=o_all {c,-clean}=o_clean {d,-debug}=o_debug {h,-help}=o_help {q,-quiet}=o_quiet {y,-yes}=o_yes || return 1
     (( $#o_help )) && {
         print -l -- ${usage}
         return 0
@@ -1380,6 +1362,7 @@ EOF
     (( $#o_debug )) && {
         setopt xtrace
     }
+    (( $#o_quiet )) && o_quiet=1
     (( $#o_clean && $#o_all )) && {
         +zi-log "{e} Invalid usage: Options --all and --clean are mutually exclusive"
         return 1
@@ -1402,9 +1385,11 @@ EOF
         (( $#del_list || $#unld_plgns || $#unld_snips )) && {
             (( $#unld_snips )) && +zi-log "{m} Deleting {num}${#unld_snips}{rst} unloaded snippets:" $unld_snips
             (( $#unld_plgns )) && +zi-log "{m} Deleting {num}${#unld_plgns}{rst} unloaded plugins:" $unld_plgns
-            if (( $#o_yes )) || ( .zinit-prompt "Delete ${#unld_snips} snippets and ${#unld_plgns} plugins?" ); then
+            if (( $#o_yes )) || (
+                    .zinit-prompt "Delete ${#unld_snips} snippets and ${#unld_plgns} plugins?"
+                ); then
                 for snip in $del_list $unld_plgns $unld_snips; do
-                    zinit delete --yes "$snip"
+                    zinit delete --yes ${${(M)o_quiet:#1}:+--quiet} "$snip"
                     _retval+=$?
                 done
                 return _retval
@@ -1426,12 +1411,14 @@ EOF
             fi
         }
         local -a all_installed=("${ZINIT[HOME_DIR]}"/{'plugins','snippets'}/**/\._zinit/teleid(N+condition))
-        if (( $#o_yes )) || ( .zinit-prompt "Delete all plugins and snippets ($#all_installed total)" ); then
+        if (( $#o_yes )) || (
+                .zinit-prompt "Delete all plugins and snippets ($#all_installed total)"
+            ); then
             for i in ${all_installed[@]}; do
-                zinit delete --yes "${i}"
+                zinit delete --yes ${${(M)o_quiet:#1}:+--quiet} "${i}"
             done
             rc=$?
-            command rm -d -f -v "${ZINIT[HOME_DIR]}"/**/*(-@N) "${ZINIT[HOME_DIR]}"/{'plugins','snippets'}/*(N/^F)
+            # command rm -d -f -v "${ZINIT[HOME_DIR]}"/**/*(-@N) "${ZINIT[HOME_DIR]}"/{'plugins','snippets'}/*(N/^F)
             local f
             for f in ${(k)ZINIT[(I)STATES__*~*local/zinit]}; do
                 builtin unset "ZINIT[${f}]"
@@ -1445,7 +1432,9 @@ EOF
         +zi-log "{e} Invalid usage: This command requires at least 1 plugin or snippet argument."
         return 0
     }
-    if (( $#o_yes )) || ( .zinit-prompt "Delete ${(j:, :)@}" ); then
+    if (( $#o_yes )) || (
+            .zinit-prompt "Delete ${(j:, :)@}"
+        ); then
         for i in "${@}"; do
             local -A ICE=() ICE2=()
             local the_id="${${i:#(%|/)*}}" filename is_snippet local_dir
@@ -1469,6 +1458,7 @@ EOF
                 }
                 command rm -d -f -r "${ZINIT[HOME_DIR]}"/**/*(-@N) "${ZINIT[HOME_DIR]}"/{'plugins','snippets'}/*(N/^F) ${(q)${${local_dir:#[/[:space:]]##}:-${TMPDIR:-${TMPDIR:-/tmp}}/abcYZX321}}(N)
                 builtin unset "ZINIT[STATES__${i}]" || builtin unset "ZINIT[STATES__${ICE2[teleid]}]"
+                .zinit-clear-completions ${${(M)o_quiet:#1}:+--quiet}
                 (( $#o_quiet )) || +zi-log "{m} Uninstalled {b}$i{rst}"
             else
                 +zi-log "{w} No available plugin or snippet with the name '{b}$i{rst}'"
@@ -1864,22 +1854,40 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
 } # ]]]
 # FUNCTION: .zinit-run-delete-hooks [[[
 .zinit-run-delete-hooks () {
-    local make_path=$5/Makefile mfest_path=$5/build/install_manifest.txt quiet='2>/dev/null 1>&2'
-    if [[ -f $make_path ]] && grep '^uninstall' $make_path &> /dev/null; then
-        +zi-log -n "{m} Make uninstall... "
-        eval 'command make -C ${make_path:h} {prefix,{,CMAKE_INSTALL_}PREFIX}=$ZINIT[ZPFX] --ignore-errors uninstall' 2>/dev/null 1>&2
-        if (( $? == 0 )); then
-            +zi-log " [{happy}OK{rst}]"
-        else
-            +zi-log " [{error}Failed{rst}]"
-        fi
-    elif [[ -f $mfest_path ]]; then
+    local make_path="$5/Makefile" mfest_path="$5/build/install_manifest.txt" quiet='2>/dev/null 1>&2'
+    local quiet=">/dev/null 2>&1"
+    if (( ZINIT[DEBUG] )); then
+        quiet=
+    fi
+    local -i ret
+    if [[ -f "$mfest_path" ]]; then
+        +zi-log "{dbg} cmake --build ${5:A}/build/ --target uninstall"
         +zi-log -n "{m} Cmake uninstall... "
-        if { command cmake --build ${mfest_path:h} --target uninstall || xargs rm -rf < "$mfest_path" } &>/dev/null ; then
+        {
+            # cmake_uninstall="cmake --build ${5:A}/build/ --target uninstall"
+            cmake_uninstall="(cat $mfest_path; echo) | sh -c 'while read i ; do rm $i ; rmdir --ignore-fail-on-non-empty -p ${i%/*} ; done'"
+            zsh --nozle -c ${cmake_uninstall} $quiet
+            ret=$?
+        } always {
+            if (( ret )); then
+                +zi-log " [{happy}OK{rst}]"
+            else
+                +zi-log " [{error}Failed{rst}]"
+            fi
+        }
+    elif [[ -f $make_path && ! -f $mfest_path ]]; then
+        local prefix="${ICE[make]%(#bm)PREFIX=([^ ]##)}"
+        local make_uninstall="command make -C ${5} PREFIX=${match[1]} --ignore-errors uninstall"
+        +zi-log -- "{dbg} $make_uninstall"
+        +zi-log -n "{m} Make uninstall... "
+        zsh --nozle -c ${make_uninstall}
+        ret=$?
+        if (( $ret == 0 )); then
             +zi-log " [{happy}OK{rst}]"
         else
             +zi-log " [{error}Failed{rst}]"
         fi
+
     fi
     eval 'find $ZINIT[ZPFX] -depth -type d -empty -delete' &> /dev/null
     if [[ -n ${ICE[atdelete]} ]]; then
@@ -2336,6 +2344,7 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
     +zi-log "Zinit's binary directory: {file}${ZINIT[BIN_DIR]}{rst}"
     +zi-log "Plugin directory: {file}${ZINIT[PLUGINS_DIR]}{rst}"
     +zi-log "Completions directory: {file}${ZINIT[COMPLETIONS_DIR]}{rst}"
+    +zi-log "Debug mode: {ice}${${ZINIT[DEBUG]:+enabled}:-disabled}{rst}"
 
     # Without _zlocal/zinit
     +zi-log "Loaded plugins: {num}$(( ${#ZINIT_REGISTERED_PLUGINS[@]} - 1 )){rst}"

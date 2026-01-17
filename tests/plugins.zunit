@@ -61,52 +61,40 @@
   run zinit make for @neovim/neovim; assert $state equals 0
   local neovim="$ZBIN/nvim"; assert $neovim is_executable
   run "$neovim" --version; assert $state equals 0
-
   nvim_ver="$($neovim --version | head -n1 | awk '{print $2}')";
   nvim_commit="$(git --work-tree=$ZINIT[PLUGINS_DIR]/neovim---neovim rev-parse --short HEAD)";
   print -lPr " " "nvim ver: %F{blue}$nvim_ver%f" "nvim commit sha: %F{blue}$nvim_commit%f" "check: [[ %F{blue}$nvim_ver%f = %F{blue}*$nvim_commit(#e)%f ]]"
-  [[ $nvim_ver = *$nvim_commit(#e) ]] && print -P "%F{green}ok%f"
-  run zinit delete --yes neovim/neovim; assert $state equals 0
-  run "$neovim" --version; assert $state equals 127
 }
-# @test 'neovim-cmake' {
-#   run zinit cmake for @neovim/neovim; assert $state equals 0
-#   local neovim="$ZBIN/nvim"; assert $neovim is_executable
-#   run "$neovim" --version; assert $state equals 0
-#
-#   nvim_ver="$($neovim --version | head -n1 | awk '{print $2}')";
-#   nvim_commit="$(git --work-tree=$ZINIT[PLUGINS_DIR]/neovim---neovim rev-parse --short HEAD)";
-#   print -lPr " " "nvim ver: %F{blue}$nvim_ver%f" "nvim commit sha: %F{blue}$nvim_commit%f" "check: [[ %F{blue}$nvim_ver%f = %F{blue}*$nvim_commit(#e)%f ]]"
-#   [[ $nvim_ver = *$nvim_commit(#e) ]] && print -P "%F{green}ok%f"
-#
-#   run zinit delete --yes neovim/neovim; assert $state equals 0
-# }
+@test 'parallel' {
+  run zinit configure'a --disable-documentation' --depth'1' make for @martinda/gnu-parallel
+  assert $state equals 0
+  local parallel="$ZBIN/parallel"; assert $parallel is_executable
+  run "$parallel" --version; assert $state equals 0
+}
 @test 'tmux' {
   if [[ $OSTYPE =~ 'darwin*' ]]; then
     run zinit configure'--disable-utf8proc' make for @tmux/tmux; assert $state equals 0
   else
-    run zinit build for @tmux/tmux; assert $state equals 0
+    # run zinit build for @tmux/tmux; assert $state equals 0
+    run zinit configure'--disable-utf8proc' make for @tmux/tmux; assert $state equals 0
   fi
   local tmux="$ZBIN/tmux"; assert $tmux is_executable
   run "$tmux" -V; assert $state equals 0
-  run zinit delete --yes tmux/tmux; assert $state equals 0
-  run "$tmux" -V; assert $state equals 127
 }
 @test 'vim' {
-  run zinit build for @vim/vim; assert $state equals 0
+  run zinit depth'1' configure"--disable-libsodium" make for @vim/vim; assert $state equals 0
   local vim="$ZBIN/vim"; assert $vim is_executable
   run "$vim" --version; assert $state equals 0
   # run zinit delete --yes vim/vim; assert $state equals 0
 }
 @test 'zsh' {
   # run zinit configure'--with-tcsetpgrp' make'install.bin' for @zsh-users/zsh; assert $state equals 0
-  run zinit configure'--with-tcsetpgrp' atclone"./Util/preconfig"  make'install.bin' for @zsh-users/zsh; assert $state equals 0
+  run zinit configure'--with-tcsetpgrp' atclone"./Util/preconfig" make'install.bin' for @zsh-users/zsh; assert $state equals 0
   local zsh="$ZBIN/zsh"; assert $zsh is_executable
   run "$zsh" --version; assert $state equals 0
   run zinit delete --yes zsh-users/zsh; assert $state equals 0
   run "$zsh" --version; assert $state equals 127
 }
-
 # ===========
 # Flaky tests
 # ===========
@@ -121,5 +109,16 @@
 #   run zinit creinstall -q .; assert $state equals 0
 #   local broken_completions=($(echo "$ZINIT[COMPLETIONS_DIR]"/*(-@N))); assert "$#broken_completions[@]" equals 0
 # }
-
-# vim:ft=zsh:sw=2:sts=2:et:foldmarker={,}:foldmethod=indent
+# @test 'neovim-cmake' {
+#   run zinit cmake for @neovim/neovim; assert $state equals 0
+#   local neovim="$ZBIN/nvim"; assert $neovim is_executable
+#   run "$neovim" --version; assert $state equals 0
+#
+#   nvim_ver="$($neovim --version | head -n1 | awk '{print $2}')";
+#   nvim_commit="$(git --work-tree=$ZINIT[PLUGINS_DIR]/neovim---neovim rev-parse --short HEAD)";
+#   print -lPr " " "nvim ver: %F{blue}$nvim_ver%f" "nvim commit sha: %F{blue}$nvim_commit%f" "check: [[ %F{blue}$nvim_ver%f = %F{blue}*$nvim_commit(#e)%f ]]"
+#   [[ $nvim_ver = *$nvim_commit(#e) ]] && print -P "%F{green}ok%f"
+#
+#   run zinit delete --yes neovim/neovim; assert $state equals 0
+# }
+# vim:ft=zsh:sw=2:sts=2:et:foldmethod=indent

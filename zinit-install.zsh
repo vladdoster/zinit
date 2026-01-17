@@ -1480,7 +1480,7 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
         +zi-log "{e} {b}gh-r{rst}: {ice}bpick{rst} ice found no release assets To fix, modify the {ice}bpick{rst} glob pattern {glob}$bpick{rst}"
       fi
     else
-      local junk='*((s(ha256|ig|um)|386|asc|md5|txt|vsix)*|(apk|b3|deb|json|pkg|rpm|sh|zst)(#e))';
+      local junk='*((s(ha256|ig|um)|386|asc|md5|txt|vsix)*|(appimage|zsync|apk|b3|deb|json|pkg|rpm|sh|zst)(#e))';
       # print -l ${${(m@)list:#${~junk}}:t}
       filtered=( ${(m@)list:#(#i)${~junk}} ) && (( $#filtered > 0 )) && list=( ${filtered[@]} )
     fi
@@ -2076,40 +2076,55 @@ zimv() {
     configure=${ICE[configure]}
     @zinit-substitute configure
     (( ${+ICE[configure]} )) || return 0
-    flags=${(M)configure##[smc0\!\#]##}
-    configure=${configure##$flags([[:space:]]##|(#e))}
-    eflags=${(SM)flags##[\!]##}
-    aflags=${(SM)flags##[smc0]##}
+
+    local -a flags=(${(s::QO)${(M)configure##[a\!\#\:]##}})
+    local -a cfg=( ${(zS)${(m)configure##[a\!\#\:]##}} )
+    typeset -aU configure_opt=( $cfg )
+    if (( ${#${(@z)${(j: :)${(M)configure:#--prefix(?|)*}}//--prefix [\/~][^ ]##}} )); then
+      configure_opt+=("--prefix=${ZPFX:-${ZINIT[HOME_DIR]}/polaris}")
+    fi
+    +zi-log "{dbg} {nl}flags $#flags | ${(@)flags}{nl}configure => $#cfg[@] | ${(@)cfg}"
     [[ $eflags == $ex ]] || return 0
-    typeset -aU configure_opt=(${(@s; ;)configure})
-    configure_opt+=("--prefix=${ZPFX:-${ZINIT[HOME_DIR]}/polaris}")
+
+    local quiet=">/dev/null 2>&1"
+    if (( ZINIT[DEBUG] )); then
+        quiet=
+    fi
     {
         builtin cd -- "$dir" || return 1
-        if [[ -n *(#i)makefile(#qN) ]]; then
-            return 0
-        elif [[ -z *(#i)configure(#qN) ]]; then
-            +zi-log "{m} ${ice} Attempting to generate configure script... "
-            local c
-            for c in "[[ -e autogen.sh ]] && sh ./autogen.sh" "[[ -n *.a[mc](#qN.) ]] && autoreconf -ifm" "git clean -fxd; aclocal --force; autoconf --force; automake --add-missing --copy --force-missing"; do
-                +zi-log -PrD "{dbg} ${ice} {faint}${c}{rst}"
-                {
-                    eval "${c}" 2> /dev/null >&2
-                } always {
-                    [[ -n *(#i)configure(#qN) ]] && break
-                    (( TRY_BLOCK_ERROR = 0 ))
-                }
-            done
+        if [[ -z *(#i)configure(#qN) || ${flags[(Ie)a]}  ]]; then
+            if (( $flags[(Ie)a] )); then
+              {
+                  +zi-log -n "{i} ${ice} autoreconf to generate configure script... "
+                  zsh --nozle -c "(autoreconf --make) ${quiet}"
+              } always {
+                  [[ -n *(#i)configure(#qN) ]] && +zi-log "{ok}[OK]{rst}" || +zi-log "{err}[FAILED]{rst}"
+              }
+            else
+                +zi-log "{i} ${ice} Attempting to generate configure script... "
+                local c
+                for c in "[[ -e autogen.sh ]] && sh ./autogen.sh" "[[ -n *.a[mc](#qN.) ]] && autoreconf -ifm" "git clean -fxd; aclocal --force; autoconf --force; automake --add-missing --copy --force-missing"; do
+                    +zi-log -PrD "{dbg} ${ice} {faint}${c}{rst}"
+                    {
+                        zsh --nozle -c "(${c}) ${quiet}"
+                    } always {
+                        [[ -n *(#i)configure(#qN) ]] && break
+                        (( TRY_BLOCK_ERROR = 0 ))
+                    }
+                done
+            fi
         fi
-        +zi-log "{m} ${ice} Generating Makefile"
-        +zi-log "{dbg} ${ice} {faint}./configure $(builtin print -PDn -- ${(Ds; ;)configure_opt[@]//prefix /prefix=}){rst}"
-        eval "./configure ${(S)configure_opt[@]//prefix /prefix=}" 2> /dev/null >&2
+        local cmd="(./configure ${(S)configure_opt[@]}) ${quiet}"
+        +zi-log "{dbg} ${cmd}"
+        +zi-log -n "{i} ${ice} Generating Makefile"
+        zsh --nozle -c ${cmd}
+        local cfg_ret=$?
         if [[ -n *(#i)makefile(#qN) ]]; then
-            +zi-log "{m} ${ice} Successfully generated Makefile"
-            return 0
+            +zi-log " {happy}[OK]{rst}"
         else
-            +zi-log "{e} ${ice} Failed project configuration"
-            return 1
+            +zi-log " {err}[FAILED]{rst}"
         fi
+        return $cfg_ret
     }
 } # ]]]
 # FUNCTION: ∞zinit-configure-e-hook [[[
@@ -2139,32 +2154,32 @@ zimv() {
     @zinit-substitute make
     (( ${+ICE[make]} )) || return 0
     local eflags=${(M)make##[\!]##}
-    make=${make##$eflags}
+    make=${make##${eflags}}
+
     [[ $ex == $eflags ]] || return 0
     local make_prefix='prefix'
-    if grep -w -- "PREFIX =" ${dir}/[Mm]akefile >/dev/null; then
+    if grep -w -- "PREFIX =" ${dir}/[Mm]akefile > /dev/null; then
         make_prefix="PREFIX"
     fi
-
     local src=($dir/[Cc][Mm]ake*(N.om[1]))
     if (( $#src )); then
-      +zi-log "{m} ${ice} Detected Cmake project, using CMAKE_INSTALL_PREFIX={file}\$ZPFX{rst}"
-      make_prefix="CMAKE_INSTALL_PREFIX"
+        +zi-log "{m} ${ice} Detected Cmake project, using CMAKE_INSTALL_PREFIX={file}\$ZPFX{rst}"
+        make_prefix="CMAKE_INSTALL_PREFIX"
     else
-      +zi-log -ru2 -- "{dbg} ${dir:t}: No Cmake files found in ${dir}"
+        +zi-log -ru2 -- "{dbg} ${dir:t}: No Cmake files found in ${dir}"
     fi
-    local prefix="${ZINIT[ZPFX]}"
-    if [[ -n OPTS[opt_-q,--quiet] || -n ${ZINIT[DEBUG]:#1} ]]; then
-        +zi-log "{dbg} ${ice} setting quiet mode"
-        local quiet='2>/dev/null 1>&2'
+    # local prefix="${ZINIT[ZPFX]}"
+    local quiet=">/dev/null 2>&1"
+    if (( ZINIT[DEBUG] )); then
+        quiet=
     fi
     local -i ret=0
     {
-        build="make -C ${dir} --jobs 4"
-        +zi-log "{m} ${ice} Building..."
-        # +zi-log "{m} ${ice} {faint}${(Ds; ;)build} $make_prefix=$(builtin print -Pnf '%s' ${(D)ZINIT[ZPFX]}){rst}"
-        +zi-log "{dbg} ${ice} eval ${build} $make_prefix=$prefix 2>/dev/null 1>&2"
-        eval "${build} $make_prefix=$prefix" 2>/dev/null 1>&2
+        build="command make -j8 -C${dir} ${make} ${quiet}"
+        # build="$make_prefix=$prefix command make $make_prefix=$prefix -j -C${dir} ${quiet}"
+        +zi-log "{m} ${ice} Building ${dir}..."
+        +zi-log "{dbg} ${ice} $build"
+        zsh --nozle -c ${build} $quiet
         ret=$?
     } always {
         if (( ret )); then
@@ -2173,11 +2188,11 @@ zimv() {
         (( TRY_BLOCK_ERROR = 0 ))
     }
     {
-        install="${build} ${make}"
-        # +zi-log "{m} ${ice} {faint}${(Ds; ;)build} $make_prefix=$(builtin print -Pnf '%s' ${ZINIT[POLARIS]}) ${make} {rst}"
+        # install="$make_prefix=$prefix ${build} $make_prefix=$prefix ${make} ${make_prefix}=${prefix}"
+        install="${build} install"
         +zi-log "{m} ${ice} Installing in ${(D)ZINIT[ZPFX]}"
-        +zi-log "{dbg} ${ice} eval ${build} $make_prefix=$prefix ${make} 2>/dev/null 1>&2"
-        eval "${(s; ;)install} $make_prefix=$prefix" 2>/dev/null 1>&2
+        +zi-log "{dbg} ${ice} ${install}"
+        zsh --nozle -c ${install} ${quiet}
         ret=$?
     } always {
         if (( ret )); then
