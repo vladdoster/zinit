@@ -2286,7 +2286,7 @@ $match[7]}:-${ZINIT[__last-formatter-code]}}}:+}}}//←→}
     [[ -n ${ZINIT_ICES[pick]} ]] && ZINIT_ICES[pick]="${ZINIT_ICES[pick]//\$ZPFX/${ZPFX%/}}"
     if (( $+ZINIT_ICES[build] )); then
         ZINIT_ICES[configure]='--prefix=${ZPFX}'
-        ZINIT_ICES[make]='PREFIX=${ZPFX}'
+        ZINIT_ICES[make]='PREFIX=${ZPFX} install'
         +zi-log -- "{dbg} {ice}build{rst}: set configure => ${ZINIT_ICES[configure]} | make => ${ZINIT_ICES[make]} "
     fi
     if (( $+ZINIT_ICES[configure] || $+ZINIT_ICES[cmake] || $+ZINIT_ICES[make] )); then

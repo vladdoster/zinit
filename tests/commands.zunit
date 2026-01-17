@@ -13,29 +13,23 @@
   typeset -gx ZBIN="$zi_test_dir/polaris/bin"
 }
 
-@test 'help' {
-  for cmd in 'help' '-h' '--help'; do
-    run zinit $cmd
-    assert $output contains '—— help                          – usage information'
-    assert $state equals 0
-  done
-  run zinit -help
-  assert $output contains 'Unknown subcommand'
-  assert $state equals 1
+@test 'debug-disable' {
+  run +zi-log -n '{dbg} message'; assert $output contains ''
+  run +zi-log -n '{m} message'
+  assert $output contains 'message'; assert $state equals 0
 }
-
-@test 'delete --help' {
-  run zinit delete --help
-  assert $output contains 'zinit delete [options] [plugins...]'
-  assert $state equals 0
+@test 'debug-enable' {
+  ZINIT+=(DEBUG 'true')
+  run +zi-log -n '{dbg} message'
+  assert $output contains '[debug]'; assert $state equals 0
 }
 @test 'delete --all' {
   run zinit as'completion' is-snippet for @'https://github.com/docker/cli/blob/master/contrib/completion/zsh/_docker'
   assert $state equals 0
 }
-@test 'delete a snippet' {
-  run zinit id-as'git.zsh' is-snippet for @'OMZL::git.zsh'
-  run zinit delete --yes 'git.zsh'
+@test 'delete --help' {
+  run zinit delete --help
+  assert $output contains 'zinit delete [options] [plugins...]'
   assert $state equals 0
 }
 @test 'delete a plugin' {
@@ -49,31 +43,34 @@
     run return ${+commands[wd]}; assert $state equals 0
     run zinit delete --yes mfaerevaag/wd
 }
-
-@test 'plugins' {
-  run perl -pe 's/\x1b\[[0-9;]*[mG]//g' <(zinit plugins)
+@test 'delete a snippet' {
+  run zinit id-as'git.zsh' is-snippet for @'OMZL::git.zsh'
+  run zinit delete --yes 'git.zsh'
   assert $state equals 0
-  assert $output contains "==> 5 Plugins"
-  assert $output contains 'Loaded: L | Unloaded: U'
+}
+@test 'help' {
+  for cmd in 'help' '-h' '--help'; do
+    run zinit $cmd
+    assert $output contains '—— help                          – usage information'
+    assert $state equals 0
+  done
+  run zinit -help
+  assert $output contains 'Unknown subcommand'
+  assert $state equals 1
 }
 @test 'plugins with keyword' {
   run perl -pe 's/\x1b\[[0-9;]*[mG]//g' <(zinit plugins zdharma)
   assert $state equals 0
   assert $output contains "==> 4 Plugins matching 'zdharma'"
 }
-
+@test 'plugins' {
+  run perl -pe 's/\x1b\[[0-9;]*[mG]//g' <(zinit plugins)
+  assert $state equals 0
+  assert $output contains "==> 5 Plugins"
+  assert $output contains 'Loaded: L | Unloaded: U'
+}
 @test 'self-update' {
   run zinit self-update
   assert $output contains 'Already up-to-date.'
   assert $state equals 0
-}
-@test 'set-debug' {
-  ZINIT+=(DEBUG 'true')
-  run +zi-log -n '{dbg} message'
-  assert $output contains '[debug]'; assert $state equals 0
-}
-@test 'unset-dbg' {
-  run +zi-log -n '{dbg} message'; assert $output contains ''
-  run +zi-log -n '{m} message'
-  assert $output contains 'message'; assert $state equals 0
 }

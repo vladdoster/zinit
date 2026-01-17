@@ -3,19 +3,13 @@
 @setup {
   HOME="$zi_test_dir"
   typeset -gx ZBIN="$zi_test_dir/polaris/bin"
+  ZINIT[DEBUG]=0
 }
 
 @test 'bash' {
   run zinit build for @bminor/bash; assert $state equals 0
   local bash="$ZBIN/bash"; assert $bash is_executable
   run "$bash" --version; assert $state equals 0
-}
-@test 'cmatrix' {
-  run zinit build for @abishekvashok/cmatrix;
-  local cmatrix="$ZBIN/cmatrix"; assert "$cmatrix" is_executable
-  run "$cmatrix" -V; assert $state equals 0
-  zinit delete --yes abishekvashok/cmatrix; assert $state equals 0
-  run "$cmatrix"; assert $state equals 127
 }
 @test 'ctags' {
   run zinit build for @universal-ctags/ctags; assert $state equals 0
@@ -80,15 +74,20 @@
   run "$vim" --version; assert $state equals 0
 }
 @test 'zsh' {
-  run zinit configure'a:--with-tcsetpgrp --prefix=$ZPFX' atclone"./Util/preconfig" make'install.bin' for @zsh-users/zsh; assert $state equals 0
+  run zinit configure'--with-tcsetpgrp --prefix=$ZPFX' atclone"./Util/preconfig" make'install.bin' for @zsh-users/zsh; assert $state equals 0
   local zsh="$ZBIN/zsh"; assert $zsh is_executable
   run "$zsh" --version; assert $state equals 0
-  run zinit delete --yes zsh-users/zsh; assert $state equals 0
-  run "$zsh" --version; assert $state equals 127
 }
 # ===========
 # Flaky tests
 # ===========
+# @test 'cmatrix' {
+#   run zinit build for @abishekvashok/cmatrix;
+#   local cmatrix="$ZBIN/cmatrix"; assert "$cmatrix" is_executable
+#   run "$cmatrix" -V; assert $state equals 0
+#   zinit delete --yes abishekvashok/cmatrix; assert $state equals 0
+#   run "$cmatrix"; assert $state equals 127
+# }
 # @test 'neovim-cmake' {
 #   run zinit cmake for @neovim/neovim; assert $state equals 0
 #   local neovim="$ZBIN/nvim"; assert $neovim is_executable

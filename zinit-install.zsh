@@ -2153,7 +2153,7 @@ zimv() {
     (( TRY_BLOCK_ERROR = 0 ))
   }
   {
-    install="${build} install"
+    install="${build} ${make}"
     +zi-log "{m} ${ice} Installing in ${(D)ZINIT[ZPFX]}"
     +zi-log "{dbg} ${ice} ${install}"
     zsh --nozle -c ${install} ${quiet}

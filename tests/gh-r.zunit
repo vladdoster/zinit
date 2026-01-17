@@ -10,6 +10,12 @@
   zinit default-ice --quiet from'gh-r' lbin'!' null
 }
 
+# @test 'keepassxc' { # a cross-platform community-driven port of the Windows application Keepass Password Safe
+#   [[ $OSTYPE =~ 'linux*' ]] && skip "skipped on $os_type"
+#   run zinit for lbin'!*-cli -> keepassxc-cli' @keepassxreboot/keepassxc; assert $state equals 0
+#   local keepassxc="$ZBIN/keepassxc-cli"; assert "$keepassxc" is_executable
+#   run $keepassxc --version; assert $state equals 0
+# }
 @test 'act' { # Run your GitHub Actions locally
   run zinit for @nektos/act; assert $state equals 0
   local act="$ZBIN/act"; assert "$act" is_executable
@@ -432,12 +438,6 @@
   local just="$ZBIN/just"; assert "$just" is_executable
   run $just --version; assert $state equals 0
 }
-# @test 'keepassxc' { # a cross-platform community-driven port of the Windows application Keepass Password Safe
-#   [[ $OSTYPE =~ 'linux*' ]] && skip "skipped on $os_type"
-#   run zinit for lbin'!*-cli -> keepassxc-cli' @keepassxreboot/keepassxc; assert $state equals 0
-#   local keepassxc="$ZBIN/keepassxc-cli"; assert "$keepassxc" is_executable
-#   run $keepassxc --version; assert $state equals 0
-# }
 @test 'ko' { # Build and deploy Go applications on Kubernetes
   run zinit for @ko-build/ko; assert $state equals 0
   local ko="$ZBIN/ko"; assert "$ko" is_executable
@@ -453,11 +453,6 @@
   local krew="$ZBIN/krew"; assert "$krew" is_executable
   run $krew version; assert $state equals 0
 }
-@test 'kubedb' { # `kubectl` plugin for KubeDB
-  run zinit for lbin'!kube*->kubedb' @kubedb/cli; assert $state equals 0
-  local cli="$ZBIN/kubedb"; assert "$cli" is_executable
-  run "$cli" version; assert $state equals 0
-}
 @test 'kubectl-plugins' { # Faster way to switch between clusters and namespaces in kubectl
   [[ $OSTYPE =~ 'darwin*' ]] && skip "skipped on $os_type"
   load_bin_gem_node
@@ -467,6 +462,11 @@
     prog="$ZBIN/${bin}"; assert "$prog" is_executable;
     run "$prog" --help; assert $state equals 0
   done
+}
+@test 'kubedb' { # `kubectl` plugin for KubeDB
+  run zinit for lbin'!kube*->kubedb' @kubedb/cli; assert $state equals 0
+  local cli="$ZBIN/kubedb"; assert "$cli" is_executable
+  run "$cli" version; assert $state equals 0
 }
 @test 'lazygit' { # simple terminal UI for git commands
   run zinit for @jesseduffield/lazygit; assert $state equals 0
