@@ -2052,7 +2052,7 @@ zimv() {
   if (( ${#${(@z)${(j: :)${(M)configure:#--prefix(?|)*}}//--prefix [\/~][^ ]##}} )); then
     configure_opt+=("--prefix=${ZPFX:-${ZINIT[HOME_DIR]}/polaris}")
   fi
-  +zi-log "{dbg} {nl}flags $#flags | ${(@)flags}{nl}configure => $#cfg[@] | ${(@)cfg}"
+  +zi-log "{dbg} {nl}flags $#flags | ${(@)flags}{nl}configure => $#cfg[@] | ${(@)configure_opt}"
   [[ $eflags == $ex ]] || return 0
   local quiet=">/dev/null 2>&1"
   if (( ZINIT[DEBUG] )); then
@@ -2064,14 +2064,14 @@ zimv() {
       if (( $flags[(Ie)a] )); then
         {
           +zi-log -n "{i} ${ice} autoreconf to generate configure script... "
-          zsh --nozle -c "(autoreconf --make) ${quiet}"
+          zsh --nozle -c "(autoreconf --make --install) ${quiet}"
         } always {
           [[ -n *(#i)configure(#qN) ]] && +zi-log "{ok}[OK]{rst}" || +zi-log "{err}[FAILED]{rst}"
         }
       else
         +zi-log "{i} ${ice} Attempting to generate configure script... "
         local c
-        for c in "[[ -e autogen.sh ]] && sh ./autogen.sh" "[[ -n *.a[mc](#qN.) ]] && autoreconf -ifm" "git clean -fxd; aclocal --force; autoconf --force; automake --add-missing --copy --force-missing"; do
+        for c in "[[ -e autogen.sh ]] && sh ./autogen.sh" "[[ -n *.a[mc](#qN.) ]] && autoreconf --install --make" "git clean -fxd; aclocal --force; autoconf --force; automake --add-missing --copy --force-missing"; do
           +zi-log -PrD "{dbg} ${ice} {faint}${c}{rst}"
           {
             zsh --nozle -c "(${c}) ${quiet}"
