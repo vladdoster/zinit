@@ -2118,30 +2118,33 @@ zimv() {
   else
     local dir="${4#%}" hook="$5" subtype="$6" ex="$7"
   fi
+
   local ice='{b}make{rst}:' make_prefix='prefix'
-  if [[ -n $~(#i)${dir}/makefile(#qN) ]] && grep -owE '(^prefix)' $~(#i)${dir}/makefile > /dev/null; then
-    ICE[make]=${ICE[make]//(#m)PREFIX/${(L)MATCH}}
-  fi
+
   local make=${ICE[make]}
   @zinit-substitute make
   (( ${+ICE[make]} )) || return 0
   local eflags=${(M)make##[\!]##}
   make=${make##${eflags}}
   [[ $ex == $eflags ]] || return 0
-  local src=($dir/[Cc][Mm]ake*(N.om[1]))
-  if (( $#src )); then
+  if [[ -n $~(#i)${dir}/makefile(#qN) ]] && grep -owE '(^prefix)' $~(#i)${dir}/makefile > /dev/null; then
+    make=${ICE[make]//(#m)PREFIX/${(L)MATCH}}
+  fi
+  if [[ -n $~(#i)${dir}/cmakelists*(#q.N) ]]; then
     +zi-log "{m} ${ice} Detected Cmake project, using CMAKE_INSTALL_PREFIX={file}\$ZPFX{rst}"
-    make_prefix="CMAKE_INSTALL_PREFIX"
+    cmake="${make/PREFIX/CMAKE_INSTALL_PREFIX}=$ZPFX"
+    make="${make/PREFIX/CMAKE_INSTALL_PREFIX}"
   else
     +zi-log -ru2 -- "{dbg} ${dir:t}: No Cmake files found in ${dir}"
   fi
+
   local quiet=">/dev/null 2>&1"
   if (( ZINIT[DEBUG] )); then
     quiet=
   fi
   local -i ret=0
   {
-    build="command make -j8 -C${dir}"
+    build="command make -j8 -C${dir} ${cmake}"
     +zi-log "{m} ${ice} Building ${dir}..."
     +zi-log "{dbg} ${ice} $build"
     zsh --nozle -c "(${build}) $quiet"

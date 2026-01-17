@@ -1864,10 +1864,14 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
         +zi-log "{dbg} cmake --build ${5:A}/build/ --target uninstall"
         +zi-log -n "{m} Cmake uninstall... "
         {
-            # cmake_uninstall="cmake --build ${5:A}/build/ --target uninstall"
-            cmake_uninstall="(cat $mfest_path; echo) | sh -c 'while read i ; do rm $i ; rmdir --ignore-fail-on-non-empty -p ${i%/*} ; done'"
-            zsh --nozle -c ${cmake_uninstall} $quiet
-            ret=$?
+            local -a to_rm=(${(f)"$(<${mfest_path})"})
+            local f
+            for f in $to_rm; do
+                rm -f $f ${quiet} && true
+                rmdir --ignore-fail-on-non-empty -p ${f%/*} ${quiet} && true
+            done
+            # zsh --nozle -c "(${cmake_uninstall}) $quiet"
+            ret=0
         } always {
             if (( ret )); then
                 +zi-log " [{happy}OK{rst}]"
