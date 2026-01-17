@@ -2141,7 +2141,7 @@ zimv() {
   fi
   local -i ret=0
   {
-    build="command make -j8 -C${dir} ${make} ${quiet}"
+    build="command make -j8 -C${dir}"
     +zi-log "{m} ${ice} Building ${dir}..."
     +zi-log "{dbg} ${ice} $build"
     zsh --nozle -c ${build} $quiet
@@ -2153,7 +2153,7 @@ zimv() {
     (( TRY_BLOCK_ERROR = 0 ))
   }
   {
-    install="${build} ${make}"
+    install="${build} ${(uz)make}"
     +zi-log "{m} ${ice} Installing in ${(D)ZINIT[ZPFX]}"
     +zi-log "{dbg} ${ice} ${install}"
     zsh --nozle -c ${install} ${quiet}
