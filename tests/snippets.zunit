@@ -52,11 +52,12 @@
   assert $artifact/_tldr_ghr is_readable
   assert "$ZINIT[COMPLETIONS_DIR]"/_tldr_ghr is_file
   assert "$ZINIT[COMPLETIONS_DIR]"/_tldr_ghr is_readable
+  # zinit delete --yes tldr-completion/_tldr; zinit cclear
 }
 @test 'tldr-completion::snippet' {
-  run install_completion 'tldr-completion/_tldr' 'tealdeer-rs/tealdeer/main/completion/zsh_tealdeer'
+  run install_completion '_tldr' 'tealdeer-rs/tealdeer/main/completion/zsh_tealdeer'
   setup_snippet_ok $state $output "$ZINIT[COMPLETIONS_DIR]"/_tldr
-  zinit delete --yes tldr-completion/_tldr; zinit cclear
+  # zinit delete --yes tldr-completion/_tldr; zinit cclear
 }
 @test 'zinit local snippet symlink' {
   mkdir -p "${ZINIT[HOME_DIR]}/external"

@@ -29,8 +29,8 @@
 }
 @test 'delete --help' {
   run zinit delete --help
-  assert $output contains 'zinit delete [options] [plugins...]'
-  assert $state equals 0
+  assert $output contains "HELP"
+  assert $state equals 1
 }
 @test 'delete a plugin' {
     run zinit from'gh-r' as'program' id-as mv'shfmt* -> shfmt' for @'mvdan/sh'

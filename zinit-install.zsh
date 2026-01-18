@@ -1775,7 +1775,7 @@ ziextract() {
             fi
         fi
     elif (( warning )); then
-        +zi-log "{info}[{pre}ziextract{info}]{error} Error:{msg} didn't recognize archive type of {obj}${file}{msg} ${ext:+/ {obj2}${ext}{msg} } (no extraction has been done).{rst}"
+        +zi-log "{info}[{pre}ziextract{info}]{error} Error:{msg} didn't recognize archive type of {obj}${file}{msg} {obj2}${ext:+${ext}}{msg} (no extraction has been done).{rst}"
     fi
     if (( move | move2 )); then
         local -a files
