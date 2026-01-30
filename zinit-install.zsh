@@ -1775,7 +1775,7 @@ ziextract() {
             fi
         fi
     elif (( warning )); then
-        +zi-log "{info}[{pre}ziextract{info}]{error} Error:{msg} didn't recognize archive type of {obj}${file}{msg} {obj2}${ext:+${ext}}{msg} (no extraction has been done).{rst}"
+        +zi-log "{info}[{pre}ziextract{info}]{error} Error:{msg} didn't recognize archive type of {obj}${file}{msg} {obj2}${ext:+${ext} }{msg}(no extraction has been done).{rst}"
     fi
     if (( move | move2 )); then
         local -a files
@@ -2297,9 +2297,9 @@ __zinit-cmake-base-hook () {
                 retval=1
                 continue
             fi
-            if (( !OPTS[opt_-q,--quiet] )); then
-                cmd_args+=("-v")
-            fi
+            # if (( !OPTS[opt_-q,--quiet] )); then
+            #     cmd_args+=("-v")
+            # fi
 
             for file in "${afr[@]}"; do
                 command "$cmd" "${cmd_args[@]}" "$file" "$to" || retval=$?

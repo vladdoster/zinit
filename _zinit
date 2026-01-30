@@ -276,11 +276,33 @@ _zinit_self_update(){
 } # ]]]
 # FUNCTION: _zinit_snippet [[[
 _zinit_snippet(){
-  _arguments -A \
-    '(-c --command)'{-c,--command}'[Load the snippet as a command (i.e., make executable and apend to $PATH])' \
-    '(-f --force)'{-f,--force}'[Force new download of the snippet file]' \
-    '(-h --help)'{-h,--help}'[Show this help message]'
-  _arguments - snippet '*::snippet:__zinit_installed_snippets' && ret=0
+  _arguments \
+  + '(operation)' \
+    '(-h --help)'{-h,--help}'[Show this help message]' \
+  - (set1) \
+    '(-q --quiet)'{-q,--quiet}'[Make some output more quiet]' \
+    '(-c --command)'{-c,--command}'[Delete only the currently-not loaded plugins and snippets]' \
+    '*::snippet:__zinit_installed_snippets' \
+  # _arguments -A \
+  #   {-c,--command}'[Delete only the currently-not loaded plugins and snippets]' \
+  #   {-h,--help}'[Show this help message]' \
+  #   {-q,--quiet}'[Make some output more quiet]' \
+  #   - snippet \
+  #     '*::snippet:__zinit_installed_snippets' \
+  #   && ret=0
+  # _arguments \
+  #   '(-h --help)'{-h,--help}'[Show this help message]' \
+  #   '(-q --quiet)'{-q,--quiet}'[Make some output more quiet]' \
+  #   + '(operation)' \
+  #    '*::snippet:__zinit_installed_snippets'
+  # _arguments - snippet '*::snippet:__zinit_installed_snippets' && ret=0
+      # '(-c --command)'{-c,--command}'[Load the snippet as a command (i.e., make executable and append to \$PATH])' \
+
+  # _arguments -A \
+  #   '(-c --command)'{-c,--command}'[Load the snippet as a command (i.e., make executable and apend to $PATH])' \
+  #   '(-f --force)'{-f,--force}'[Force new download of the snippet file]' \
+  #   '(-h --help)'{-h,--help}'[Show this help message]'
+  # _arguments - snippet '*::snippet:__zinit_installed_snippets' && ret=0
 } # ]]]
 # FUNCTION: _zinit_status [[[
 _zinit_status(){

@@ -12,9 +12,10 @@
   }
 }
 
-@test 'OMZL::spectrum.zsh' {
-  run zinit snippet OMZL::spectrum.zsh
-  setup_snippet_ok $state $output "$ZINIT[SNIPPETS_DIR]/OMZL::spectrum.zsh/OMZL::spectrum.zsh"
+
+@test 'exa-completion' {
+  run install_completion 'exa-completion/_exa' 'ogham/exa/master/completions/zsh/_exa'
+  setup_snippet_ok $state $output "$ZINIT[COMPLETIONS_DIR]"/_exa
 }
 @test 'OMZP::git' {
   run zinit snippet OMZP::git
@@ -27,6 +28,10 @@
 @test 'bat-completion' {
   run install_completion 'bat-completion/_bat' 'sharkdp/bat/master/assets/completions/bat.zsh.in'
   setup_snippet_ok $state $output "$ZINIT[COMPLETIONS_DIR]"/_bat
+}
+@test 'OMZL::spectrum.zsh' {
+  run zinit snippet OMZL::spectrum.zsh
+  setup_snippet_ok $state $output "$ZINIT[SNIPPETS_DIR]/OMZL::spectrum.zsh/OMZL::spectrum.zsh"
 }
 @test 'brew-completion' {
   run install_completion 'brew-completion/_brew' 'Homebrew/brew/master/completions/zsh/_brew'
@@ -46,7 +51,7 @@
 }
 @test 'tldr-completion::gh-r' {
   artifact="$ZINIT[PLUGINS_DIR]/tldr-completion---gh-r"
-  run zinit for as"completion" from"gh-r" id-as'tldr-completion/gh-r' bpick"completions_zsh" mv"completions_zsh -> _tldr_ghr" pick"_tldr_ghr" @tealdeer-rs/tealdeer
+  run zinit silent for as"completion" from"gh-r" id-as'tldr-completion/gh-r' bpick"completions_zsh" mv"completions_zsh -> _tldr_ghr" pick"_tldr_ghr" @tealdeer-rs/tealdeer
   assert $state equals 0
   assert "$artifact/_tldr_ghr" is_file
   assert $artifact/_tldr_ghr is_readable

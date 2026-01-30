@@ -2604,7 +2604,7 @@ zinit() {
         delete "--all|--clean|--help|--quiet|--yes|-a|-c|-h|-q|-y"
         env-whitelist "--help|--verbose|-h|-v"
         light "--help|-b|-h"
-        snippet "--command|--force|--help|-f|-h|-x"
+        snippet "--command|--force|--help|--quiet|-f|-h|-q|-x"
         times "--help|-h|-m|-s"
         unload "--help|--quiet|-h|-q"
         update "--all|--help|--no-pager|--parallel|--plugins|--quiet|--reset|--snippets|--urge|--verbose|-L|-a|-h|-n|-p|-q|-r|-s|-u|-v"
