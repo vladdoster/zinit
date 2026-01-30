@@ -263,7 +263,7 @@ _zinit_recently(){
 } # ]]]
 # FUNCTION: _zinit_report [[[
 _zinit_report(){
-  _message 'Hit enter to list the defined key bindings replay' && ret=0
+  _arguments - installed '1:plugin:__zinit_installed_plugins' && ret=0
 } # ]]]
 # FUNCTION: _zinit_run [[[
 _zinit_run(){
