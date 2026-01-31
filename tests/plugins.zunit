@@ -4,7 +4,7 @@
   HOME="$zi_test_dir"
   typeset -gx ZBIN="$zi_test_dir/polaris/bin"
   ZINIT[DEBUG]=
-  zinit default-ice --quiet
+  zinit default-ice --quiet cloneopts'--quiet'
 }
 
 @test 'bash' {
