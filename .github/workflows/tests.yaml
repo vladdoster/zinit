@@ -24,7 +24,7 @@ on:
 
 jobs:
   initial:
-    runs-on: [macos-latest, ubuntu-latest]
+    runs-on: [macos-latest]
     steps:
       - name: install homebrew
         uses: Homebrew/actions/setup-homebrew@master
