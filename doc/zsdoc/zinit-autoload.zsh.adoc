@@ -326,17 +326,17 @@ ____
 
 ____
 
-Has 37 line(s). Calls functions:
+Has 45 line(s). Calls functions:
 
  .zinit-clear-completions
- |-- .zinit-get-completion-owner
  |-- .zinit-prepare-readlink
- `-- zinit-side.zsh/.zinit-any-colorify-as-uspl2
+ `-- zinit.zsh/+zi-log
 
-Uses feature(s): _setopt_
+Uses feature(s): _setopt_, _zmodload_, _zparseopts_
 
 Called by:
 
+ .zinit-delete
  zinit.zsh/.zinit-prepare-home
  zinit.zsh/zinit
 
@@ -487,9 +487,12 @@ ____
 
 ____
 
-Has 129 line(s). Calls functions:
+Has 118 line(s). Calls functions:
 
  .zinit-delete
+ |-- .zinit-clear-completions
+ |   |-- .zinit-prepare-readlink
+ |   `-- zinit.zsh/+zi-log
  |-- .zinit-prompt
  |-- .zinit-run-delete-hooks
  |   `-- zinit.zsh/+zi-log
@@ -752,7 +755,6 @@ Uses feature(s): _setopt_
 
 Called by:
 
- .zinit-clear-completions
  .zinit-get-completion-owner-uspl2col
  .zinit-show-completions
 
@@ -1036,7 +1038,7 @@ Called by:
 
 ==== .zinit-run-delete-hooks
 
-Has 33 line(s). Calls functions:
+Has 54 line(s). Calls functions:
 
  .zinit-run-delete-hooks
  `-- zinit.zsh/+zi-log
@@ -1288,7 +1290,7 @@ ____
 
 ____
 
-Has 47 line(s). Calls functions:
+Has 48 line(s). Calls functions:
 
  .zinit-show-zstatus
  `-- zinit.zsh/+zi-log
