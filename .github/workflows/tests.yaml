@@ -58,7 +58,14 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
-
+      - name: install homebrew
+        uses: Homebrew/actions/setup-homebrew@master
+        
+      - name: Install brew deps
+        uses: tecolicom/actions-use-homebrew-tools@v1.3
+        with:
+          tools: "autoconf automake binutils byacc coreutils curl gettext gnu-sed libevent libtool libuv lua lua@5.4 make ncurses ninja parallel pkg-config texinfo unzip xz zsh"
+          
 
       - name: "install musl"
         if: runner.os == 'Linux'
