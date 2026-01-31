@@ -273,16 +273,19 @@ _zinit_run(){
 } # ]]]
 # FUNCTION: _zinit_self_update [[[
 _zinit_self_update(){
+  _message 'Updates and compiles Zinit' && ret=0
 } # ]]]
 # FUNCTION: _zinit_snippet [[[
 _zinit_snippet(){
+
   _arguments \
-  + '(operation)' \
+    '(-f --force)'{-f,--force}'[Force new download of the snippet file]' \
     '(-h --help)'{-h,--help}'[Show this help message]' \
-  - (set1) \
     '(-q --quiet)'{-q,--quiet}'[Make some output more quiet]' \
-    '(-c --command)'{-c,--command}'[Delete only the currently-not loaded plugins and snippets]' \
-    '*::snippet:__zinit_installed_snippets' \
+    '(-x --command)'{-x,--command}'[Load the snippet as a command, (i.e., add it to $PATH and set +x on it]' \
+    + '(operation)' \
+      '1:snippet:__zinit_installed_snippets' \
+    && ret=0
   # _arguments -A \
   #   {-c,--command}'[Delete only the currently-not loaded plugins and snippets]' \
   #   {-h,--help}'[Show this help message]' \
