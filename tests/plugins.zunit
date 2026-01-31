@@ -6,7 +6,7 @@
   ZINIT[DEBUG]="true"
 }
 @test 'jq' {
-  run zinit cloneopts"--recurse-submodules" configure'a --disable-docs --with-oniguruma=builtin --enable-static --enable-all-static' make for @jqlang/jq; assert $state equals 0
+  run zinit cloneopts"--recurse-submodules" configure'a: --prefix=$ZPFX --disable-docs --with-oniguruma=builtin --enable-static --enable-all-static' make for @jqlang/jq; assert $state equals 0
   local jq="$ZBIN/jq"; assert "$jq" is_executable
   run "$jq" --version; assert $state equals 0
 }
