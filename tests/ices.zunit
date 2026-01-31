@@ -33,7 +33,7 @@
   assert "$ZPLUGINS/test---ignored_completions/__init__.py" is_file
   assert "$ZINIT[COMPLETIONS_DIR]/_valid" is_file
   COMPS=( "$ZINIT[COMPLETIONS_DIR]"/_* )
-  assert __init__.py is_not_value_in $COMPS
+  assert '__init__.py' not_in $COMPS
 }
 @test 'completions-overwrite' {
   # if both are given, the completions wins
