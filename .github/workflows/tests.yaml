@@ -33,7 +33,6 @@ jobs:
         uses: tecolicom/actions-use-homebrew-tools@v1.3
         with:
           tools: "autoconf automake binutils byacc coreutils curl gettext gnu-sed libevent libtool libuv lua lua@5.4 make ncurses ninja parallel pkg-config texinfo unzip xz zsh"
-          cache: workflow
           
       - name: "link dependencies"
         run: brew link --force --overwrite ncurses
