@@ -40,6 +40,7 @@ jobs:
 
   zunit-tests:
     runs-on: ${{ matrix.os }}
+    needs: initial
     strategy:
       fail-fast: false
       matrix:
