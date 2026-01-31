@@ -4,9 +4,12 @@
   HOME="$zi_test_dir"
   typeset -gx ZBIN="$zi_test_dir/polaris/bin"
   ZINIT[DEBUG]="true"
-  zinit default-ice --quiet cloneopts'--quiet'
 }
-
+@test 'jq' {
+  run zinit cloneopts"--recurse-submodules" configure'a --disable-docs --with-oniguruma=builtin --enable-static --enable-all-static' make for @jqlang/jq; assert $state equals 0
+  local jq="$ZBIN/jq"; assert "$jq" is_executable
+  run "$jq" --version; assert $state equals 0
+}
 @test 'bash' {
   run zinit build for @tianon/mirror-bash; assert $state equals 0
   local bash="$ZBIN/bash"; assert $bash is_executable
@@ -27,11 +30,7 @@
   local htop="$ZBIN/htop"; assert "$htop" is_executable
   run "$htop" --version; assert $state equals 0
 }
-@test 'jq' {
-  run zinit build for @jqlang/jq; assert $state equals 0
-  local jq="$ZBIN/jq"; assert "$jq" is_executable
-  run "$jq" --version; assert $state equals 0
-}
+
 @test 'lua-format' {
   run zinit cmake for @Koihik/LuaFormatter; assert $state equals 0
   local lua_format="$ZBIN/lua-format"; assert "$lua_format" is_executable
