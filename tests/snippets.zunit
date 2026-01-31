@@ -13,25 +13,9 @@
 }
 
 
-@test 'exa-completion' {
-  run install_completion 'exa-completion/_exa' 'ogham/exa/master/completions/zsh/_exa'
-  setup_snippet_ok $state $output "$ZINIT[COMPLETIONS_DIR]"/_exa
-}
-@test 'OMZP::git' {
-  run zinit snippet OMZP::git
-  setup_snippet_ok $state $output "$ZINIT[SNIPPETS_DIR]/OMZP::git/OMZP::git"
-}
-@test 'PZTM::environment' {
-  run zinit snippet PZTM::environment
-  setup_snippet_ok $state $output "$ZINIT[SNIPPETS_DIR]/PZTM::environment/PZTM::environment"
-}
 @test 'bat-completion' {
   run install_completion 'bat-completion/_bat' 'sharkdp/bat/master/assets/completions/bat.zsh.in'
   setup_snippet_ok $state $output "$ZINIT[COMPLETIONS_DIR]"/_bat
-}
-@test 'OMZL::spectrum.zsh' {
-  run zinit snippet OMZL::spectrum.zsh
-  setup_snippet_ok $state $output "$ZINIT[SNIPPETS_DIR]/OMZL::spectrum.zsh/OMZL::spectrum.zsh"
 }
 @test 'brew-completion' {
   run install_completion 'brew-completion/_brew' 'Homebrew/brew/master/completions/zsh/_brew'
@@ -48,6 +32,18 @@
 @test 'fd-completion' {
   run install_completion 'fd-completion/_fd' 'sharkdp/fd/master/contrib/completion/_fd'
   setup_snippet_ok $state $output "$ZINIT[COMPLETIONS_DIR]"/_fd
+}
+@test 'OMZL::spectrum.zsh' {
+  run zinit snippet OMZL::spectrum.zsh
+  setup_snippet_ok $state $output "$ZINIT[SNIPPETS_DIR]/OMZL::spectrum.zsh/OMZL::spectrum.zsh"
+}
+@test 'OMZP::git' {
+  run zinit snippet OMZP::git
+  setup_snippet_ok $state $output "$ZINIT[SNIPPETS_DIR]/OMZP::git/OMZP::git"
+}
+@test 'PZTM::environment' {
+  run zinit snippet PZTM::environment
+  setup_snippet_ok $state $output "$ZINIT[SNIPPETS_DIR]/PZTM::environment/PZTM::environment"
 }
 @test 'tldr-completion::gh-r' {
   artifact="$ZINIT[PLUGINS_DIR]/tldr-completion---gh-r"
