@@ -63,11 +63,16 @@ jobs:
             pkg-config \
             xz-utils \
             zsh
-
+            
+      - name: Install correct clang versions to compile xformers
+        uses: tecolicom/actions-use-homebrew-tools@v1.3
+        with:
+          tools: "autoconf automake binutils byacc coreutils curl gettext gnu-sed libevent libtool libuv lua lua@5.4 make ncurses ninja parallel pkg-config texinfo unzip xz zsh"
+      
       - name: "install dependencies"
         id: install-deps
         run: |
-          brew install --force --overwrite autoconf automake binutils byacc coreutils curl gettext gnu-sed libevent libtool libuv lua lua@5.4 make ncurses ninja parallel pkg-config texinfo unzip xz zsh
+          # brew install --force --overwrite autoconf automake binutils byacc coreutils curl gettext gnu-sed libevent libtool libuv lua lua@5.4 make ncurses ninja parallel pkg-config texinfo unzip xz zsh
           brew link --force --overwrite ncurses
 
       - name: "install zunit"
