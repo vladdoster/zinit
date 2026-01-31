@@ -44,7 +44,6 @@ Has 22 line(s). Calls functions:
 Called by:
 
  .zinit-exists-physically-message
- zinit-autoload.zsh/.zinit-clear-completions
  zinit-autoload.zsh/.zinit-compiled
  zinit-autoload.zsh/.zinit-create
  zinit-autoload.zsh/.zinit-exists-message
