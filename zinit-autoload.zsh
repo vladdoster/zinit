@@ -39,9 +39,7 @@ ZINIT[EXTENDED_GLOB]=""
 
     # Cannot run diff if *_BEFORE or *_AFTER variable is not set
     # Following is paranoid for *_BEFORE and *_AFTER being only spaces
-
-    builtin setopt localoptions extendedglob nokshglob noksharrays
-    [[ "${ZINIT[FUNCTIONS_BEFORE__$uspl2]}" != *[$'! \t']* || "${ZINIT[FUNCTIONS_AFTER__$uspl2]}" != *[$'! \t']* ]] && return 1
+    .zinit-validate-before-after "$uspl2" "FUNCTIONS" || return 1
 
     typeset -A func
     local i
@@ -75,8 +73,7 @@ ZINIT[EXTENDED_GLOB]=""
 
     # Cannot run diff if *_BEFORE or *_AFTER variable is not set
     # Following is paranoid for *_BEFORE and *_AFTER being only spaces
-    builtin setopt localoptions extendedglob nokshglob noksharrays
-    [[ "${ZINIT[OPTIONS_BEFORE__$uspl2]}" != *[$'! \t']* || "${ZINIT[OPTIONS_AFTER__$uspl2]}" != *[$'! \t']* ]] && return 1
+    .zinit-validate-before-after "$uspl2" "OPTIONS" || return 1
 
     typeset -A opts_before opts_after opts
     opts_before=( "${(z)ZINIT[OPTIONS_BEFORE__$uspl2]}" )
@@ -108,52 +105,14 @@ ZINIT[EXTENDED_GLOB]=""
 
     # Cannot run diff if *_BEFORE or *_AFTER variable is not set
     # Following is paranoid for *_BEFORE and *_AFTER being only spaces
-    builtin setopt localoptions extendedglob nokshglob noksharrays
-    [[ "${ZINIT[PATH_BEFORE__$uspl2]}" != *[$'! \t']* || "${ZINIT[PATH_AFTER__$uspl2]}" != *[$'! \t']* ]] && return 1
-    [[ "${ZINIT[FPATH_BEFORE__$uspl2]}" != *[$'! \t']* || "${ZINIT[FPATH_AFTER__$uspl2]}" != *[$'! \t']* ]] && return 1
+    .zinit-validate-before-after "$uspl2" "PATH" || return 1
+    .zinit-validate-before-after "$uspl2" "FPATH" || return 1
 
-    typeset -A path_state fpath_state
-    local i
-
-    #
     # PATH processing
-    #
+    .zinit-compute-path-diff "$uspl2" "PATH"
 
-    # This includes new path elements
-    for i in "${(z)ZINIT[PATH_AFTER__$uspl2]}"; do
-        path_state[${(Q)i}]=1
-    done
-
-    # Remove duplicated entries, i.e. existing before
-    for i in "${(z)ZINIT[PATH_BEFORE__$uspl2]}"; do
-        unset "path_state[${(Q)i}]"
-    done
-
-    # Store the path elements, associating them with plugin ($uspl2)
-    ZINIT[PATH__$uspl2]=""
-    for i in "${(onk)path_state[@]}"; do
-        ZINIT[PATH__$uspl2]+="${(q)i} "
-    done
-
-    #
     # FPATH processing
-    #
-
-    # This includes new path elements
-    for i in "${(z)ZINIT[FPATH_AFTER__$uspl2]}"; do
-        fpath_state[${(Q)i}]=1
-    done
-
-    # Remove duplicated entries, i.e. existing before
-    for i in "${(z)ZINIT[FPATH_BEFORE__$uspl2]}"; do
-        unset "fpath_state[${(Q)i}]"
-    done
-
-    # Store the path elements, associating them with plugin ($uspl2)
-    ZINIT[FPATH__$uspl2]=""
-    for i in "${(onk)fpath_state[@]}"; do
-        ZINIT[FPATH__$uspl2]+="${(q)i} "
-    done
+    .zinit-compute-path-diff "$uspl2" "FPATH"
 
     return 0
 } # ]]]
@@ -169,8 +128,7 @@ ZINIT[EXTENDED_GLOB]=""
 
     # Cannot run diff if *_BEFORE or *_AFTER variable is not set
     # Following is paranoid for *_BEFORE and *_AFTER being only spaces
-    builtin setopt localoptions extendedglob nokshglob noksharrays
-    [[ "${ZINIT[PARAMETERS_BEFORE__$uspl2]}" != *[$'! \t']* || "${ZINIT[PARAMETERS_AFTER__$uspl2]}" != *[$'! \t']* ]] && return 1
+    .zinit-validate-before-after "$uspl2" "PARAMETERS" || return 1
 
     # Un-concatenated parameters from moment of diff start and of diff end
     typeset -A params_before params_after
