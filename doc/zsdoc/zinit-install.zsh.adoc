@@ -525,7 +525,7 @@ ____
 
 ____
 
-Has 23 line(s). Calls functions:
+Has 24 line(s). Calls functions:
 
  __zinit-cmake-base-hook
  `-- zinit.zsh/+zi-log
