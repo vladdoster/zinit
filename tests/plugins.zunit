@@ -2,80 +2,75 @@
 
 @setup {
   HOME="$zi_test_dir"
-  typeset -gx ZBIN="$zi_test_dir/polaris/bin"
+  typeset -gx ZBIN="${zi_test_dir}/polaris/bin"
   ZINIT[DEBUG]="true"
 }
 @test 'jq' {
-  run zinit cloneopts"--recurse-submodules" configure'a: --prefix=$ZPFX --disable-docs --with-oniguruma=builtin --enable-static --enable-all-static' make for @jqlang/jq; assert $state equals 0
-  local jq="$ZBIN/jq"; assert "$jq" is_executable
+  run zinit cloneopts"--recurse-submodules" configure'a: --prefix=${ZPFX} --disable-docs --with-oniguruma=builtin --enable-static --enable-all-static' make for @jqlang/jq; assert $state equals 0
+  local jq="${ZBIN}/jq"; assert "$jq" is_executable
   run "$jq" --version; assert $state equals 0
 }
 @test 'bash' {
   run zinit build for @tianon/mirror-bash; assert $state equals 0
-  local bash="$ZBIN/bash"; assert $bash is_executable
+  local bash="${ZBIN}/bash"; assert $bash is_executable
   run "$bash" --version; assert $state equals 0
 }
 @test 'ctags' {
   run zinit build for @universal-ctags/ctags; assert $state equals 0
-  local ctags="$ZBIN/ctags"; assert "$ctags" is_executable
+  local ctags="${ZBIN}/ctags"; assert "$ctags" is_executable
   run "$ctags" --version; assert $state equals 0
 }
 @test 'figlet' {
   run zinit make for @cmatsuoka/figlet; assert $state equals 0
-  local figlet="$ZBIN/figlet"; assert "$figlet" is_executable
+  local figlet="${ZBIN}/figlet"; assert "$figlet" is_executable
   run "$figlet" -I 1; assert $state equals 0
 }
 @test 'htop' {
   run zinit build for @htop-dev/htop; assert $state equals 0
-  local htop="$ZBIN/htop"; assert "$htop" is_executable
+  local htop="${ZBIN}/htop"; assert "$htop" is_executable
   run "$htop" --version; assert $state equals 0
 }
-
 @test 'lua-format' {
   run zinit cmake for @Koihik/LuaFormatter; assert $state equals 0
-  local lua_format="$ZBIN/lua-format"; assert "$lua_format" is_executable
+  local lua_format="${ZBIN}/lua-format"; assert "$lua_format" is_executable
   run "$lua_format" --version; assert $state equals 0
   run zinit delete --yes Koihik/LuaFormatter; assert $state equals 0
   run "$lua_format" --version; assert $state equals 127
 }
 @test 'ncurses' {
-  run zinit configure'--enable-widec --enable-termcap --prefix=$ZPFX' make for @mirror/ncurses; assert $state equals 0
-  local ncurses="$ZBIN/clear"; assert "$ncurses" is_executable
+  run zinit configure'--enable-widec --enable-termcap --prefix=${ZPFX}' make for @mirror/ncurses; assert $state equals 0
+  local ncurses="${ZBIN}/clear"; assert "$ncurses" is_executable
   run "$ncurses" -V; assert $state equals 0
 }
 @test 'neofetch' {
   run zinit make for @dylanaraps/neofetch; assert $state equals 0
-  local neofetch="$ZBIN/neofetch"; assert "$neofetch" is_executable
+  local neofetch="${ZBIN}/neofetch"; assert "$neofetch" is_executable
   run "$neofetch" --version; assert $state equals 1; assert $output contains 'Neofetch'
 }
 @test 'neovim-make' {
   run zinit make for @neovim/neovim; assert $state equals 0
-  local neovim="$ZBIN/nvim"; assert $neovim is_executable
+  local neovim="${ZBIN}/nvim"; assert $neovim is_executable
   run "$neovim" --version; assert $state equals 0
 }
 @test 'parallel' {
   run zinit configure'a --disable-documentation' --depth'1' make for @martinda/gnu-parallel
   assert $state equals 0
-  local parallel="$ZBIN/parallel"; assert $parallel is_executable
+  local parallel="${ZBIN}/parallel"; assert $parallel is_executable
   run "$parallel" --version; assert $state equals 0
 }
 @test 'tmux' {
-  if [[ $OSTYPE =~ 'darwin*' ]]; then
-    run zinit configure'--disable-utf8proc' make for @tmux/tmux; assert $state equals 0
-  else
-    run zinit configure'--disable-utf8proc' make for @tmux/tmux; assert $state equals 0
-  fi
+  run zinit configure'--disable-utf8proc' make for @tmux/tmux; assert $state equals 0
   local tmux="$ZBIN/tmux"; assert $tmux is_executable
   run "$tmux" -V; assert $state equals 0
 }
 @test 'vim' {
-  run zinit depth'1' configure'a:--disable-libsodium --prefix=$ZPFX' make for @vim/vim; assert $state equals 0
-  local vim="$ZBIN/vim"; assert $vim is_executable
+  run zinit depth'1' configure'a:--disable-libsodium --prefix=${ZPFX}' make for @vim/vim; assert $state equals 0
+  local vim="${ZBIN}/vim"; assert $vim is_executable
   run "$vim" --version; assert $state equals 0
 }
 @test 'zsh' {
-  run zinit configure'--with-tcsetpgrp --prefix=$ZPFX' atclone"./Util/preconfig" make'install.bin' for @zsh-users/zsh; assert $state equals 0
-  local zsh="$ZBIN/zsh"; assert $zsh is_executable
+  run zinit configure'--with-tcsetpgrp --prefix=${ZPFX}' atclone"./Util/preconfig" make'install.bin' for @zsh-users/zsh; assert $state equals 0
+  local zsh="${ZBIN}/zsh"; assert $zsh is_executable
   run "$zsh" --version; assert $state equals 0
 }
 # ===========
@@ -83,20 +78,20 @@
 # ===========
 # @test 'cmatrix' {
 #   run zinit build for @abishekvashok/cmatrix;
-#   local cmatrix="$ZBIN/cmatrix"; assert "$cmatrix" is_executable
+#   local cmatrix="${ZBIN}/cmatrix"; assert "$cmatrix" is_executable
 #   run "$cmatrix" -V; assert $state equals 0
 #   zinit delete --yes abishekvashok/cmatrix; assert $state equals 0
 #   run "$cmatrix"; assert $state equals 127
 # }
 # @test 'neovim-cmake' {
 #   run zinit cmake for @neovim/neovim; assert $state equals 0
-#   local neovim="$ZBIN/nvim"; assert $neovim is_executable
+#   local neovim="${ZBIN}/nvim"; assert $neovim is_executable
 #   run "$neovim" --version; assert $state equals 0
 #   run zinit delete --yes neovim/neovim; assert $state equals 0
 # }
 # @test 'stow' {
 #   run zinit configure'--without-pmdir' make for @aspiers/stow; assert $state equals 0
-#   local stow="$ZBIN/stow"; assert "$stow" is_executable
+#   local stow="${ZBIN}/stow"; assert "$stow" is_executable
 #   run "$stow" --version; assert $state equals 0
 # }
 # @test 'zsh-completions' {
