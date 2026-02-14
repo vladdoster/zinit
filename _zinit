@@ -263,7 +263,7 @@ _zinit_recently(){
 } # ]]]
 # FUNCTION: _zinit_report [[[
 _zinit_report(){
-  _message 'Hit enter to list the defined key bindings replay' && ret=0
+  _arguments - installed '1:plugin:__zinit_installed_plugins' && ret=0
 } # ]]]
 # FUNCTION: _zinit_run [[[
 _zinit_run(){
@@ -273,14 +273,39 @@ _zinit_run(){
 } # ]]]
 # FUNCTION: _zinit_self_update [[[
 _zinit_self_update(){
+  _message 'Updates and compiles Zinit' && ret=0
 } # ]]]
 # FUNCTION: _zinit_snippet [[[
 _zinit_snippet(){
-  _arguments -A \
-    '(-c --command)'{-c,--command}'[Load the snippet as a command (i.e., make executable and apend to $PATH])' \
+
+  _arguments \
     '(-f --force)'{-f,--force}'[Force new download of the snippet file]' \
-    '(-h --help)'{-h,--help}'[Show this help message]'
-  _arguments - snippet '*::snippet:__zinit_installed_snippets' && ret=0
+    '(-h --help)'{-h,--help}'[Show this help message]' \
+    '(-q --quiet)'{-q,--quiet}'[Make some output more quiet]' \
+    '(-x --command)'{-x,--command}'[Load the snippet as a command, (i.e., add it to $PATH and set +x on it]' \
+    + '(operation)' \
+      '1:snippet:__zinit_installed_snippets' \
+    && ret=0
+  # _arguments -A \
+  #   {-c,--command}'[Delete only the currently-not loaded plugins and snippets]' \
+  #   {-h,--help}'[Show this help message]' \
+  #   {-q,--quiet}'[Make some output more quiet]' \
+  #   - snippet \
+  #     '*::snippet:__zinit_installed_snippets' \
+  #   && ret=0
+  # _arguments \
+  #   '(-h --help)'{-h,--help}'[Show this help message]' \
+  #   '(-q --quiet)'{-q,--quiet}'[Make some output more quiet]' \
+  #   + '(operation)' \
+  #    '*::snippet:__zinit_installed_snippets'
+  # _arguments - snippet '*::snippet:__zinit_installed_snippets' && ret=0
+      # '(-c --command)'{-c,--command}'[Load the snippet as a command (i.e., make executable and append to \$PATH])' \
+
+  # _arguments -A \
+  #   '(-c --command)'{-c,--command}'[Load the snippet as a command (i.e., make executable and apend to $PATH])' \
+  #   '(-f --force)'{-f,--force}'[Force new download of the snippet file]' \
+  #   '(-h --help)'{-h,--help}'[Show this help message]'
+  # _arguments - snippet '*::snippet:__zinit_installed_snippets' && ret=0
 } # ]]]
 # FUNCTION: _zinit_status [[[
 _zinit_status(){

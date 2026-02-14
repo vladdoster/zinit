@@ -12,18 +12,6 @@
   }
 }
 
-@test 'OMZL::spectrum.zsh' {
-  run zinit snippet OMZL::spectrum.zsh
-  setup_snippet_ok $state $output "$ZINIT[SNIPPETS_DIR]/OMZL::spectrum.zsh/OMZL::spectrum.zsh"
-}
-@test 'OMZP::git' {
-  run zinit snippet OMZP::git
-  setup_snippet_ok $state $output "$ZINIT[SNIPPETS_DIR]/OMZP::git/OMZP::git"
-}
-@test 'PZTM::environment' {
-  run zinit snippet PZTM::environment
-  setup_snippet_ok $state $output "$ZINIT[SNIPPETS_DIR]/PZTM::environment/PZTM::environment"
-}
 
 @test 'bat-completion' {
   run install_completion 'bat-completion/_bat' 'sharkdp/bat/master/assets/completions/bat.zsh.in'
@@ -45,19 +33,32 @@
   run install_completion 'fd-completion/_fd' 'sharkdp/fd/master/contrib/completion/_fd'
   setup_snippet_ok $state $output "$ZINIT[COMPLETIONS_DIR]"/_fd
 }
-@test 'tldr-completion::snippet' {
-  run install_completion 'tldr-completion/_tldr' 'tealdeer-rs/tealdeer/main/completion/zsh_tealdeer'
-  setup_snippet_ok $state $output "$ZINIT[COMPLETIONS_DIR]"/_tldr
-  zinit delete --yes tldr-completion/_tldr; zinit cclear
+@test 'OMZL::spectrum.zsh' {
+  run zinit snippet OMZL::spectrum.zsh
+  setup_snippet_ok $state $output "$ZINIT[SNIPPETS_DIR]/OMZL::spectrum.zsh/OMZL::spectrum.zsh"
+}
+@test 'OMZP::git' {
+  run zinit snippet OMZP::git
+  setup_snippet_ok $state $output "$ZINIT[SNIPPETS_DIR]/OMZP::git/OMZP::git"
+}
+@test 'PZTM::environment' {
+  run zinit snippet PZTM::environment
+  setup_snippet_ok $state $output "$ZINIT[SNIPPETS_DIR]/PZTM::environment/PZTM::environment"
 }
 @test 'tldr-completion::gh-r' {
   artifact="$ZINIT[PLUGINS_DIR]/tldr-completion---gh-r"
-  run zinit for as"completion" from"gh-r" id-as'tldr-completion/gh-r' bpick"completions_zsh" mv"completions_zsh -> _tldr_ghr" pick"_tldr_ghr" @tealdeer-rs/tealdeer
+  run zinit silent for as"completion" from"gh-r" id-as'tldr-completion/gh-r' bpick"completions_zsh" mv"completions_zsh -> _tldr_ghr" pick"_tldr_ghr" @tealdeer-rs/tealdeer
   assert $state equals 0
   assert "$artifact/_tldr_ghr" is_file
   assert $artifact/_tldr_ghr is_readable
   assert "$ZINIT[COMPLETIONS_DIR]"/_tldr_ghr is_file
   assert "$ZINIT[COMPLETIONS_DIR]"/_tldr_ghr is_readable
+  # zinit delete --yes tldr-completion/_tldr; zinit cclear
+}
+@test 'tldr-completion::snippet' {
+  run install_completion '_tldr' 'tealdeer-rs/tealdeer/main/completion/zsh_tealdeer'
+  setup_snippet_ok $state $output "$ZINIT[COMPLETIONS_DIR]"/_tldr
+  # zinit delete --yes tldr-completion/_tldr; zinit cclear
 }
 @test 'zinit local snippet symlink' {
   mkdir -p "${ZINIT[HOME_DIR]}/external"
@@ -80,5 +81,4 @@ EOF
   assert $target same_as $actual
 }
 
-
-# vim:ft=zsh:sw=2:sts=2:et:foldmarker=@test,}:foldmethod=marker
+# vim:ft=zsh:sw=2:sts=2:et:foldmarker={,}:foldmethod=marker

@@ -188,7 +188,7 @@ Called by:
 
 ==== .zinit-extract
 
-Has 30 line(s). Calls functions:
+Has 22 line(s). Calls functions:
 
  .zinit-extract
  |-- ziextract
@@ -521,7 +521,6 @@ Called by:
 
 ____
  
- FUNCTION: __zinit-cmake-base-hook [[[
  A base common implementation of the cmake ice
 
 ____
@@ -561,7 +560,7 @@ ____
 
 ____
 
-Has 283 line(s). Calls functions:
+Has 281 line(s). Calls functions:
 
  ziextract
  `-- zinit.zsh/+zi-log
@@ -634,19 +633,13 @@ Not called by script or any function (may be e.g. a hook, a Zle widget, etc.).
 
 ==== ∞zinit-configure-base-hook
 
-____
- 
- A base common implementation of the configure ice
-
-____
-
-Has 46 line(s). Calls functions:
+Has 59 line(s). Calls functions:
 
  ∞zinit-configure-base-hook
  |-- zinit.zsh/+zi-log
  `-- zinit.zsh/@zinit-substitute
 
-Uses feature(s): _eval_, _setopt_
+Uses feature(s): _setopt_
 
 Called by:
 
@@ -709,7 +702,7 @@ Not called by script or any function (may be e.g. a hook, a Zle widget, etc.).
 
 ==== ∞zinit-file-cp-mv-operation
 
-Has 49 line(s). Calls functions:
+Has 46 line(s). Calls functions:
 
  ∞zinit-file-cp-mv-operation
  |-- zinit.zsh/+zi-log
@@ -730,13 +723,13 @@ ____
 
 ____
 
-Has 57 line(s). Calls functions:
+Has 58 line(s). Calls functions:
 
  ∞zinit-make-base-hook
  |-- zinit.zsh/+zi-log
  `-- zinit.zsh/@zinit-substitute
 
-Uses feature(s): _eval_, _setopt_
+Uses feature(s): _setopt_
 
 Called by:
 
@@ -801,7 +794,7 @@ Not called by script or any function (may be e.g. a hook, a Zle widget, etc.).
 
 ==== ∞zinit-reset-hook
 
-Has 79 line(s). Calls functions:
+Has 72 line(s). Calls functions:
 
  ∞zinit-reset-hook
  `-- zinit.zsh/+zi-log
