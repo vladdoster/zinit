@@ -1,0 +1,302 @@
+#!/usr/bin/env zsh
+# -*- mode: sh; sh-indentation: 4; indent-tabs-mode: nil; sh-basic-offset: 4; -*-
+# vim:ft=zsh:sw=4:sts=4:et
+#
+# build - A Zsh CLI tool demonstrating zparseopts usage
+# Copyright (c) 2024 zdharma-continuum
+# Homepage: https://github.com/zdharma-continuum/zinit
+# License: MIT License
+#
+
+setopt localoptions extendedglob warncreateglobal typesetsilent
+
+# Helper function to print verbose messages
+__build_verbose() {
+    if (( VERBOSE )); then
+        print -r -- "[VERBOSE] $@"
+    fi
+}
+
+# Helper function to print error messages
+__build_error() {
+    print -r -- "ERROR: $@" >&2
+}
+
+# General logging function
++log() {
+    local log_type="${1:-log}"
+    shift
+    
+    case "$log_type" in
+        error)
+            print -r -- "ERROR: $@" >&2
+            ;;
+        debug)
+            print -r -- "DEBUG: $@"
+            ;;
+        *)
+            # If first arg is not error or debug, treat it as a regular log message
+            # and include the original first argument back
+            print -r -- "LOG: $log_type $@"
+            ;;
+    esac
+}
+
+# Main usage information
+__build_usage() {
+    print -r -- "Usage: build [options] [subcommands...]"
+    print -r -- ""
+    print -r -- "Options:"
+    print -r -- "  -v, --verbose    Enable verbose output"
+    print -r -- "  -h, --help       Show this help message"
+    print -r -- ""
+    print -r -- "Subcommands:"
+    print -r -- "  make             Run make with optional --target flag"
+    print -r -- "  configure        Run configure with arguments"
+    print -r -- "  load-cmp         Find and load zsh completion files in a directory"
+    print -r -- ""
+    print -r -- "Examples:"
+    print -r -- "  build                          # Run with no subcommands"
+    print -r -- "  build -v                       # Run with verbose flag"
+    print -r -- "  build make                     # Run make subcommand"
+    print -r -- "  build make --target mytarget   # Run make with target"
+    print -r -- "  build configure --prefix=/usr  # Run configure with args"
+    print -r -- "  build load-cmp /path/to/dir    # Find completion files"
+    print -r -- "  build make configure           # Run both subcommands"
+}
+
+# Make subcommand usage
+__build_make_usage() {
+    print -r -- "Usage: build make [options]"
+    print -r -- ""
+    print -r -- "Options:"
+    print -r -- "  --target <name>  Specify the target to build"
+    print -r -- "  -h, --help       Show this help message"
+}
+
+# Configure subcommand usage
+__build_configure_usage() {
+    print -r -- "Usage: build configure [options] [arguments...]"
+    print -r -- ""
+    print -r -- "Options:"
+    print -r -- "  -h, --help       Show this help message"
+    print -r -- ""
+    print -r -- "Arguments:"
+    print -r -- "  Any arguments will be passed to configure"
+    print -r -- ""
+    print -r -- "Examples:"
+    print -r -- "  build configure --prefix=/usr --enable-debug"
+}
+
+# Load-cmp subcommand usage
+__build_load_cmp_usage() {
+    print -r -- "Usage: build load-cmp [options] <directory>"
+    print -r -- ""
+    print -r -- "Options:"
+    print -r -- "  -h, --help       Show this help message"
+    print -r -- ""
+    print -r -- "Arguments:"
+    print -r -- "  directory        Path to directory containing completion files"
+    print -r -- ""
+    print -r -- "Description:"
+    print -r -- "  Finds all zsh completion files (files whose first line starts with '#compdef')"
+    print -r -- "  in the specified directory."
+    print -r -- ""
+    print -r -- "Examples:"
+    print -r -- "  build load-cmp /usr/share/zsh/site-functions"
+    print -r -- "  build load-cmp ./completions"
+}
+
+# Process make subcommand
+__build_make() {
+    local -a target help
+    
+    # Load zsh/zutil for zparseopts
+    zmodload zsh/zutil
+    
+    # Parse options for make subcommand
+    zparseopts -D -F -K -- \
+        -target:=target \
+        {h,-help}=help \
+    || return 1
+    
+    if (( $#help )); then
+        __build_make_usage
+        return 0
+    fi
+    
+    __build_verbose "Executing make subcommand"
+    if (( $#target )); then
+        __build_verbose "Target: ${target[2]}"
+    fi
+    
+    if (( $#target )); then
+        print -r -- "Running make with target: ${target[2]}"
+    else
+        print -r -- "Running make with default target"
+    fi
+}
+
+# Process configure subcommand
+__build_configure() {
+    # Check for help flag manually before zparseopts
+    if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+        __build_configure_usage
+        return 0
+    fi
+    
+    __build_verbose "Executing configure subcommand"
+    if (( $# > 0 )); then
+        __build_verbose "Arguments: $@"
+    fi
+    
+    if (( $# > 0 )); then
+        print -r -- "Running configure with arguments: $@"
+    else
+        print -r -- "Running configure with no arguments"
+    fi
+}
+
+# Process load-cmp subcommand
+__build_load_cmp() {
+    # Check for help flag manually
+    if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+        __build_load_cmp_usage
+        return 0
+    fi
+    
+    # Validate that exactly one argument is provided
+    if (( $# == 0 )); then
+        __build_error "load-cmp requires a directory path argument"
+        print -r -- "Run 'build load-cmp --help' for usage information" >&2
+        return 1
+    fi
+    
+    if (( $# > 1 )); then
+        __build_error "load-cmp takes exactly one argument (directory path)"
+        print -r -- "Run 'build load-cmp --help' for usage information" >&2
+        return 1
+    fi
+    
+    local dir_path="$1"
+    
+    # Check if directory exists
+    if [[ ! -d "$dir_path" ]]; then
+        __build_error "Directory not found: $dir_path"
+        return 1
+    fi
+    
+    __build_verbose "Executing load-cmp subcommand"
+    __build_verbose "Searching directory: $dir_path"
+    
+    # Find all files in the directory (not subdirectories)
+    local -a completion_files
+    local file first_line
+    
+    # Zsh glob: (.N) = (.) regular files only, (N) null glob (no error if no matches)
+    for file in "$dir_path"/*(.N); do
+        # Read first line of the file
+        if [[ -f "$file" && -r "$file" ]]; then
+            first_line="$(head -n 1 "$file" 2>/dev/null)"
+            if [[ "$first_line" == "#compdef"* ]]; then
+                completion_files+=("$file")
+            fi
+        fi
+    done
+    
+    if (( ${#completion_files} == 0 )); then
+        print -r -- "No completion files found in: $dir_path"
+        return 0
+    fi
+    
+    print -r -- "Found ${#completion_files} completion file(s) in: $dir_path"
+    for file in "${completion_files[@]}"; do
+        # Zsh parameter expansion: :t = tail (basename of path)
+        print -r -- "  - ${file:t}"
+    done
+}
+
+# Main function
+__build_main() {
+    local -a verbose help remaining_args
+    local -i VERBOSE=0
+    
+    # Load zsh/zutil for zparseopts
+    zmodload zsh/zutil
+    
+    # Parse main options
+    zparseopts -D -F -K -- \
+        {v,-verbose}=verbose \
+        {h,-help}=help \
+    || return 1
+    
+    if (( $#help )); then
+        __build_usage
+        return 0
+    fi
+    
+    if (( $#verbose )); then
+        VERBOSE=1
+        __build_verbose "Verbose mode enabled"
+    fi
+    
+    # Store remaining arguments (subcommands)
+    remaining_args=("$@")
+    
+    if (( $#remaining_args == 0 )); then
+        __build_verbose "No subcommands specified"
+    else
+        __build_verbose "Subcommands to process: ${remaining_args[@]}"
+    fi
+    
+    # If no subcommands, just run the base command
+    if (( $#remaining_args == 0 )); then
+        print -r -- "Build command executed with no subcommands"
+        return 0
+    fi
+    
+    # Process subcommands
+    local -i idx=1
+    while (( idx <= $#remaining_args )); do
+        local subcmd="${remaining_args[idx]}"
+        idx=$((idx + 1))
+        
+        case "$subcmd" in
+            make)
+                # Collect arguments for make subcommand
+                local -a make_args
+                while (( idx <= $#remaining_args )) && [[ "${remaining_args[idx]}" != "configure" && "${remaining_args[idx]}" != "load-cmp" ]]; do
+                    make_args+=("${remaining_args[idx]}")
+                    idx=$((idx + 1))
+                done
+                __build_make "${make_args[@]}"
+                ;;
+            configure)
+                # Collect remaining arguments for configure subcommand
+                local -a configure_args
+                while (( idx <= $#remaining_args )) && [[ "${remaining_args[idx]}" != "make" && "${remaining_args[idx]}" != "load-cmp" ]]; do
+                    configure_args+=("${remaining_args[idx]}")
+                    idx=$((idx + 1))
+                done
+                __build_configure "${configure_args[@]}"
+                ;;
+            load-cmp)
+                # Collect arguments for load-cmp subcommand
+                local -a load_cmp_args
+                while (( idx <= $#remaining_args )) && [[ "${remaining_args[idx]}" != "make" && "${remaining_args[idx]}" != "configure" ]]; do
+                    load_cmp_args+=("${remaining_args[idx]}")
+                    idx=$((idx + 1))
+                done
+                __build_load_cmp "${load_cmp_args[@]}"
+                ;;
+            *)
+                __build_error "Unknown subcommand: $subcmd"
+                print -r -- "Run 'build --help' for usage information" >&2
+                return 1
+                ;;
+        esac
+    done
+}
+
+# Run main function with all arguments
+__build_main "$@"
