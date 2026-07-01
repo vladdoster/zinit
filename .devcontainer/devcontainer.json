@@ -13,7 +13,7 @@
 	// Symlink this checkout into zinit's install dir so the container loads
 	// zinit straight from the workspace (edits to the repo are live), then
 	// drop in a .zshrc that sources it. Mirrors ohmyzsh's devcontainer setup.
-	"postCreateCommand": "dir=/workspaces/zinit; home=${XDG_DATA_HOME:-$HOME/.local/share}/zinit; mkdir -p $home && rm -rf $home/zinit.git && ln -s $dir $home/zinit.git && cp $dir/.devcontainer/zshrc $HOME/.zshrc; chgrp -R 1000 $dir 2>/dev/null || true; chmod g-w,o-w $dir 2>/dev/null || true",
+	"postCreateCommand": "dir=${containerWorkspaceFolder}; home=${XDG_DATA_HOME:-$HOME/.local/share}/zinit; mkdir -p $home && rm -rf $home/zinit.git && ln -s $dir $home/zinit.git && cp $dir/.devcontainer/zshrc $HOME/.zshrc; chgrp -R 1000 $dir 2>/dev/null || true; chmod g-w,o-w $dir 2>/dev/null || true",
 	"customizations": {
 		"codespaces": {
 			"openFiles": [
