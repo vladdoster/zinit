@@ -1,0 +1,27 @@
+### Added by zinit's devcontainer
+# The container symlinks this checkout to ${ZINIT_HOME}/zinit.git (see
+# .devcontainer/devcontainer.json), so zinit is loaded from the workspace
+# source — any edit to the repo takes effect on the next shell.
+ZINIT_HOME="${XDG_DATA_HOME:-${HOME}/.local/share}/zinit/zinit.git"
+source "${ZINIT_HOME}/zinit.zsh"
+autoload -Uz _zinit
+(( ${+_comps} )) && _comps[zinit]=_zinit
+
+# Load a few important annexes, without Turbo
+# (this is currently required for annexes)
+zinit light-mode for \
+	zdharma-continuum/zinit-annex-as-monitor \
+	zdharma-continuum/zinit-annex-bin-gem-node \
+	zdharma-continuum/zinit-annex-patch-dl \
+	zdharma-continuum/zinit-annex-rust
+
+# A minimal, Turbo-loaded plugin set so the container is a working demo of
+# zinit. Trim or extend to taste.
+zinit wait lucid light-mode for \
+	atinit"zicompinit; zicdreplay" \
+		zdharma-continuum/fast-syntax-highlighting \
+	atload"_zsh_autosuggest_start" \
+		zsh-users/zsh-autosuggestions \
+	blockf atpull'zinit creinstall -q .' \
+		zsh-users/zsh-completions
+### End of zinit's devcontainer chunk
