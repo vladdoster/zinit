@@ -1174,9 +1174,25 @@ T}
 .PP
 Order of execution of related Ice-mods: \f[C]atinit\f[R] ->
 \f[C]atpull!\f[R] -> \f[C]make\[aq]!!\[aq]\f[R] -> \f[C]mv\f[R] ->
-\f[C]cp\f[R] -> \f[C]make!\f[R] -> \f[C]atclone\f[R]/\f[C]atpull\f[R] ->
-\f[C]make\f[R] -> \f[C](plugin script loading)\f[R] -> \f[C]src\f[R] ->
+\f[C]cp\f[R] -> \f[C]compile (default)\f[R] -> \f[C]make!\f[R] ->
+\f[C]atclone\f[R]/\f[C]atpull\f[R] -> \f[C]make\f[R] ->
+\f[C]compile (deferred, nocompile\[aq]!\[aq])\f[R] ->
+\f[C](plugin script loading)\f[R] -> \f[C]src\f[R] ->
 \f[C]multisrc\f[R] -> \f[C]atload\f[R].
+.PP
+Compilation runs in one of two phases.
+By default the \f[C]pick\f[R]-pointed files are compiled early \[en] right
+after \f[C]cp\f[R], and before the \f[C]atclone\f[R]/\f[C]atpull\f[R] hooks
+run \[en] so files already present in the repository (or moved into place by
+\f[C]mv\f[R]/\f[C]cp\f[R]) are compiled automatically.
+A file that is created by an \f[C]atclone\f[R] or \f[C]atpull\f[R] hook does
+not yet exist at that point, so the default compile skips it.
+Passing the bang form \f[C]nocompile\[aq]!\[aq]\f[R] disables the early
+compile and defers compilation to a second phase that runs after
+\f[C]make\[aq]\[aq]\f[R] and
+\f[C]atclone\[aq]\[aq]\f[R]/\f[C]atpull\[aq]\[aq]\f[R], once the generated
+file exists (see the \f[C]nocompile\f[R] ice).
+Bare \f[C]nocompile\f[R] disables compilation entirely.
 .SS Zinit Commands
 .PP
 Following commands are passed to \f[C]zinit ...\f[R] to obtain described
