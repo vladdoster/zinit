@@ -793,8 +793,18 @@ You may safely assume a given ice works with both plugins and snippets unless ex
 
 ### Order of Execution<a name="order-of-execution"></a>
 
-Order of execution of related Ice-mods: `atinit` -> `atpull!` -> `make'!!'` -> `mv` -> `cp` -> `make!` ->
-`atclone`/`atpull` -> `make` -> `(plugin script loading)` -> `src` -> `multisrc` -> `atload`.
+Order of execution of related Ice-mods: `atinit` -> `atpull!` -> `make'!!'` -> `mv` -> `cp` ->
+`[compile, unless nocompile is set]` -> `make!` -> `atclone`/`atpull` -> `make` -> `cmake` ->
+`[compile when nocompile'!']` -> `(plugin script loading)` -> `src` -> `multisrc` -> `atload`.
+
+Compilation runs in one of two phases. **By default** the `pick`-pointed files are compiled early –
+right after `cp`, and **before** the `atclone`/`atpull` hooks run – so files already present in the
+repository (or moved into place by `mv`/`cp`) are compiled automatically. A file that is **created by an
+`atclone` or `atpull` hook does not yet exist** at that point, so the default compile skips it. Passing
+the bang form `nocompile'!'` disables the early compile and **defers** compilation to a second phase that
+runs **after** `make''` and `atclone''`/`atpull''`, once the generated file exists (see the `nocompile`
+ice). Bare `nocompile` disables compilation entirely. `make'!!'` is the extra-early make phase before
+`mv`/`cp`/`extract` and the default compile phase.
 
 ## Zinit Commands<a name="zinit-commands"></a>
 
@@ -812,7 +822,7 @@ Following commands are passed to `zinit ...` to obtain described effects.
 
 | Command                  | Description                                                                                                                                                                                                                                                                                                          |
 | :----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `load {plg-spec}`        | Load plugin, can also receive absolute local path.                                                                                                                                                                                                                                                                   |
+| `load {plg-spec}`        | Load plugin, can also receive absolute local path. When no ice-mods are given and the plugin was already loaded once in this session, the ice-mods of that load are reused – so `unload` followed by `load` restores the plugin as it was. The deferring ice-mods (`wait`, `load`, `unload`, `service`, `subscribe`) are dropped, as the command loads immediately. |
 | `snippet [-f] {url}`     | Source local or remote file (by direct URL). `-f` – don't use cache (force redownload). The URL can use the following shorthands: `PZT::` (Prezto), `PZTM::` (Prezto module), `OMZ::` (Oh My Zsh), `OMZP::` (OMZ plugin), `OMZL::` (OMZ library), `OMZT::` (OMZ theme), e.g.: `PZTM::environment`, `OMZP::git`, etc. |
 | `light [-b] {plg-spec}`  | Light plugin load, without reporting/investigating. `-b` – investigate `bindkey`-calls only. There's also `light-mode` ice which can be used to induce the no-investigating (i.e.: _light_) loading, regardless of the command used.                                                                                 |
 | `unload [-q] {plg-spec}` | Unload plugin loaded with `zinit load ...`. `-q` – quiet.                                                                                                                                                                                                                                                            |
@@ -911,7 +921,7 @@ zinit [options] uncompile PLUGIN
 | `ice <ice specification>`                                        | Add ice to next command, argument is e.g. from"gitlab".                                                                                                                                                                                                                                                                               |
 | `env-whitelist [-v] [-h] {env..}`                                | Allows to specify names (also patterns) of variables left unchanged during an unload. `-v` – verbose.                                                                                                                                                                                                                                 |
 | `run` `[-l]` `[plugin]` `{command}`                              | Runs the given command in the given plugin's directory. If the option `-l` will be given then the plugin should be skipped – the option will cause the previous plugin to be reused.                                                                                                                                                  |
-| `delete {plg-spec}\|URL\|--clean\|--all`                         | Remove plugin or snippet from disk (good to forget wrongly passed ice-mods). <br> `--all` – purge.<br> `--clean` – delete plugins and snippets that are not loaded.                                                                                                                                                                   |
+| `delete {plg-spec}\|URL\|--clean\|--all`                         | Remove plugin or snippet from disk (good to forget wrongly passed ice-mods). A plugin that is currently loaded is unloaded first, so its bindkeys, widgets and functions do not outlive its files. <br> `--all` – purge.<br> `--clean` – delete plugins and snippets that are not loaded.                                              |
 | `update [-q] [-r] {plg-spec}\|URL\|--all`                        | Git update plugin or snippet.<br> `--all` – update all plugins and snippets.<br> `-q` – quiet.<br> `-r` \| `--reset` – run `git reset --hard` / `svn revert` before pulling changes.                                                                                                                                                  |
 | `add-fpath\|fpath` `[-f\|--front]` `{plg-spec}` `[subdirectory]` | Adds given plugin (not yet snippet) directory to `$fpath`. If the second argument is given, it is appended to the directory path. If the option `-f`/`--front` is given, the directory path is prepended instead of appended to `$fpath`. The `{plg-spec}` can be absolute path, i.e.: it's possible to also add regular directories. |
 
