@@ -1532,7 +1532,7 @@ ziextract() {
                   "{meta}--move{msg2}, {meta}--move2{msg2}, {meta}--norm{msg2}," \
                   "{meta}--nobkp{msg2}).{rst}"; return 1; }
 
-    local file="$1" ext="$2"
+    local file="$1" ext="$2" body
     integer move=${${${(M)${#opt_move}:#0}:+0}:-1} \
             move2=${${${(M)${#opt_move2}:#0}:+0}:-1} \
             norm=${${${(M)${#opt_norm}:#0}:+0}:-1} \
@@ -1637,25 +1637,25 @@ ziextract() {
 
     case "${${ext:+.$ext}:-$file}" in
         ((#i)*.zip)
-            →zinit-extract() { →zinit-check unzip "$file" || return 1; command unzip -qq -o "$file"; }
+            body='→zinit-check unzip "$file" || return 1; command unzip -qq -o "$file"'
             ;;
         ((#i)*.rar)
-            →zinit-extract() { →zinit-check unrar "$file" || return 1; command unrar x "$file"; }
+            body='→zinit-check unrar "$file" || return 1; command unrar x "$file"'
             ;;
         ((#i)*.tar.bz2|(#i)*.tbz|(#i)*.tbz2)
-            →zinit-extract() { →zinit-check bzip2 "$file" || return 1; command bzip2 -dc "$file" | command tar --no-same-owner -xf -; }
+            body='→zinit-check bzip2 "$file" || return 1; command bzip2 -dc "$file" | command tar --no-same-owner -xf -'
             ;;
         ((#i)*.tar.gz|(#i)*.tgz)
-            →zinit-extract() { →zinit-check gzip "$file" || return 1; command gzip -dc "$file" | command tar --no-same-owner -xf -; }
+            body='→zinit-check gzip "$file" || return 1; command gzip -dc "$file" | command tar --no-same-owner -xf -'
             ;;
         ((#i)*.tar.xz|(#i)*.txz)
-            →zinit-extract() { →zinit-check xz "$file" || return 1; command xz -dc "$file" | command tar --no-same-owner -xf -; }
+            body='→zinit-check xz "$file" || return 1; command xz -dc "$file" | command tar --no-same-owner -xf -'
             ;;
         ((#i)*.tar.7z|(#i)*.t7z)
-            →zinit-extract() { →zinit-check 7z "$file" || return 1; command 7z x -so "$file" | command tar --no-same-owner -xf -; }
+            body='→zinit-check 7z "$file" || return 1; command 7z x -so "$file" | command tar --no-same-owner -xf -'
             ;;
         ((#i)*.tar)
-            →zinit-extract() { →zinit-check tar "$file" || return 1; command tar --no-same-owner -xf "$file"; }
+            body='→zinit-check tar "$file" || return 1; command tar --no-same-owner -xf "$file"'
             ;;
         ((#i)*.gz|(#i)*.gzip)
             if [[ $file != (#i)*.gz ]] {
@@ -1663,14 +1663,12 @@ ziextract() {
                 file=$file.gz
                 integer zi_was_renamed=1
             }
-            →zinit-extract() {
-                →zinit-check gunzip "$file" || return 1
-                .zinit-get-mtime-into "$file" 'ZINIT[tmp]'
-                command gunzip "$file" |& command grep -E -v '.out$'
+            body='→zinit-check gunzip "$file" || return 1
+                .zinit-get-mtime-into "$file" "ZINIT[tmp]"
+                command gunzip "$file" |& command grep -E -v ".out$"
                 integer ret=$pipestatus[1]
                 command touch -t "$(strftime %Y%m%d%H%M.%S $ZINIT[tmp])" "$file"
-                return ret
-            }
+                return ret'
             ;;
         ((#i)*.bz2|(#i)*.bzip2)
             # Rename file if its extension does not match "bz2". bunzip2 refuses
@@ -1680,65 +1678,57 @@ ziextract() {
                 command mv $file $file.bz2
                 file=$file.bz2
             }
-            →zinit-extract() { →zinit-check bunzip2 "$file" || return 1
-                .zinit-get-mtime-into "$file" 'ZINIT[tmp]'
-                command bunzip2 "$file" |& command grep -E -v '.out$'
+            body='→zinit-check bunzip2 "$file" || return 1
+                .zinit-get-mtime-into "$file" "ZINIT[tmp]"
+                command bunzip2 "$file" |& command grep -E -v ".out$"
                 integer ret=$pipestatus[1]
                 command touch -t "$(strftime %Y%m%d%H%M.%S $ZINIT[tmp])" "$file"
-                return ret
-            }
+                return ret'
             ;;
         ((#i)*.xz)
             if [[ $file != (#i)*.xz ]] {
                 command mv $file $file.xz
                 file=$file.xz
             }
-            →zinit-extract() { →zinit-check xz "$file" || return 1
-                .zinit-get-mtime-into "$file" 'ZINIT[tmp]'
+            body='→zinit-check xz "$file" || return 1
+                .zinit-get-mtime-into "$file" "ZINIT[tmp]"
                 command xz -d "$file"
                 integer ret=$?
                 command touch -t "$(strftime %Y%m%d%H%M.%S $ZINIT[tmp])" "$file"
-                return ret
-             }
+                return ret'
             ;;
         ((#i)*.7z|(#i)*.7-zip)
-            →zinit-extract() { →zinit-check 7z "$file" || return 1; command 7z x "$file" >/dev/null;  }
+            body='→zinit-check 7z "$file" || return 1; command 7z x "$file" >/dev/null'
             ;;
         ((#i)*.dmg)
-            →zinit-extract() {
-                local prog
+            body='local prog
                 for prog ( hdiutil cp ) { →zinit-check $prog "$file" || return 1; }
-
                 integer retval
                 local attached_vol="$( command hdiutil attach "$file" | \
                            command tail -n1 | command cut -f 3 )"
-
                 command cp -Rf ${attached_vol:-${TMPDIR:-/tmp}/acb321GEF}/*(D) .
                 retval=$?
                 command hdiutil detach $attached_vol
-
                 if (( retval )) {
                     +zi-log "{info}[{pre}ziextract{info}]{error} Error:{msg} problem occurred when attempted to copy the files" \
-                            "from the mounted image: \`{obj}${file}{msg}'.{rst}"
+                            "from the mounted image: \`{obj}${file}{msg}'\''.{rst}"
                 }
-                return $retval
-            }
+                return $retval'
             ;;
         ((#i)*.deb)
-            →zinit-extract() { →zinit-check dpkg-deb "$file" || return 1; command dpkg-deb -R "$file" .; }
+            body='→zinit-check dpkg-deb "$file" || return 1; command dpkg-deb -R "$file" .'
             ;;
         ((#i)*.rpm)
-            →zinit-extract() { →zinit-check cpio "$file" || return 1; $ZINIT[BIN_DIR]/share/rpm2cpio.zsh "$file" | command cpio -imd --no-absolute-filenames; }
+            body='→zinit-check cpio "$file" || return 1; $ZINIT[BIN_DIR]/share/rpm2cpio.zsh "$file" | command cpio -imd --no-absolute-filenames'
             ;;
         ((#i)*.exe|(#i)*.pe32)
-            →zinit-extract() {
-                command chmod a+x -- ./$file
-                ./$file /S /D="`cygpath -w $PWD`"
-            }
+            body='command chmod a+x -- ./$file
+                ./$file /S /D="`cygpath -w $PWD`"'
             ;;
     esac
 
-    if [[ $(typeset -f + →zinit-extract) == "→zinit-extract" ]] {
+    if [[ -n $body ]] {
+        builtin eval "→zinit-extract() { $body }"
         .zinit-extract-wrapper "$file" →zinit-extract || {
             +zi-log -n "{info}[{pre}ziextract{info}]{error} Error:{msg} extraction of the archive \`{file}${file}{msg}' had problems"
             local -a bfiles
