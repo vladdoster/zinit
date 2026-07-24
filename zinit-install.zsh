@@ -2147,7 +2147,8 @@ zimv() {
     make=${make##$eflags}
     [[ $ex == $eflags ]] || return 0
     local make_prefix='prefix'
-    if grep -w -- "PREFIX =" ${dir}/[Mm]akefile >/dev/null; then
+    local -a _zinit_mk=( ${dir}/[Mm]akefile(N.) )
+    if (( $#_zinit_mk )) && grep -w -- "PREFIX =" $_zinit_mk[1] >/dev/null; then
         make_prefix="PREFIX"
     fi
 
