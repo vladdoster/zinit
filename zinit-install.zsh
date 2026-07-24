@@ -1706,9 +1706,9 @@ ziextract() {
                 integer retval
                 local attached_vol="$( command hdiutil attach "$file" | \
                            command tail -n1 | command cut -f 3 )"
-                command cp -Rf ${attached_vol:-${TMPDIR:-/tmp}/acb321GEF}/*(D) .
+                command cp -Rf "${attached_vol:-${TMPDIR:-/tmp}/acb321GEF}"/*(D) .
                 retval=$?
-                command hdiutil detach $attached_vol
+                command hdiutil detach "$attached_vol"
                 if (( retval )) {
                     +zi-log "{info}[{pre}ziextract{info}]{error} Error:{msg} problem occurred when attempted to copy the files" \
                             "from the mounted image: \`{obj}${file}{msg}'\''.{rst}"
@@ -1728,7 +1728,8 @@ ziextract() {
     esac
 
     if [[ -n $body ]] {
-        builtin eval "→zinit-extract() { $body }"
+        builtin eval "→zinit-extract() { $body
+}"
         .zinit-extract-wrapper "$file" →zinit-extract || {
             +zi-log -n "{info}[{pre}ziextract{info}]{error} Error:{msg} extraction of the archive \`{file}${file}{msg}' had problems"
             local -a bfiles
