@@ -1711,7 +1711,7 @@ ziextract() {
                 command hdiutil detach $attached_vol
                 if (( retval )) {
                     +zi-log "{info}[{pre}ziextract{info}]{error} Error:{msg} problem occurred when attempted to copy the files" \
-                            "from the mounted image: \`{obj}${file}{msg}'"'"'.{rst}"
+                            "from the mounted image: \`{obj}${file}{msg}'\''.{rst}"
                 }
                 return $retval'
             ;;
