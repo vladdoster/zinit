@@ -61,7 +61,7 @@ jobs:
           sudo apt-get update --yes
           sudo apt-get install --no-install-recommends --yes \
             autoconf automake autotools-dev \
-            build-essential byacc bubblewrap \
+            build-essential byacc \
             file \
             gcc gettext glibc-source grep \
             libc6 libc6-dev libevent-dev libncurses5-dev libncursesw5-dev libtool libuvc0 lua5.1 \
@@ -70,7 +70,6 @@ jobs:
             pkg-config \
             xz-utils \
             zsh
-          brew install --force --quiet --build-from-source libcap bubblewrap
 
       - name: "install dependencies via brew"
         id: install-deps
