@@ -96,4 +96,4 @@ jobs:
           make all install
 
       - name: "run ${{ matrix.zunit_test }} tests"
-        run: zunit run --verbose tests/${{ matrix.zunit_test }}.zunit
+        run: zunit run --verbose --slice tests/${{ matrix.zunit_test }}.zunit
