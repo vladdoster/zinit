@@ -22,14 +22,15 @@
 #   svn' followed by `run zinit snippet ...' cannot work – the ICE array dies
 #   with the subshell – and why each recipe is a helper function.
 #
-# Ordering
-#   Disk state is shared, so the tests are ordered download-first/delete-last.
-#   Two have a hard ordering requirement, marked inline.  Every test can still
-#   (re)download what it needs, so a reorder costs runtime, never correctness.
-#   `zunit -p' is safe – a file is one unit of work, so these run in one
-#   worker, in this order.  Never add `--slice', which splits the file across
-#   workers: each gets its own bootstrap and so its own empty $zi_test_dir,
-#   and every test that reads what an earlier one downloaded fails.
+# Independence
+#   Disk state is shared within a run, so every test opens by saying what it
+#   needs: `discard' for the snippets whose *download* it asserts on, and a
+#   provide_* helper for the ones it only reads.  Declaration order is then a
+#   readability choice rather than a contract, and the file is safe under
+#   `zunit -p', `--slice' and `--slice -p' alike.  Provisioning is mandatory,
+#   not defensive: `--slice' splits the file across workers and each worker
+#   sources the bootstrap itself, so it starts from its own empty
+#   $zi_test_dir with nothing downloaded at all.
 
 @setup {
   typeset -gx HOME="$zi_test_dir"
@@ -95,10 +96,46 @@
     .zinit-prepare-home || true
     return 0
   }
+
+  # -- provisioning ----------------------------------------------------------
+  # Every helper below returns 0: test bodies run under ERR_EXIT, and none of
+  # this is the thing under test.
+
+  # ._zinit/mode is written last, and only for a snippet that came down whole,
+  # so it is the marker for "already here".
+  have_snippet() { [[ -f $SNIPPETS/$1/._zinit/mode ]] }
+
+  # Drop a snippet so the next load is a real download -- `Setting up snippet'
+  # and atclone'' fire on nothing else.
+  discard() { command rm -rf -- "$SNIPPETS/$1"; return 0 }
+
+  # $SNIPPETS/OMZ::plugins and the `plugins' symlink beside it (what makes
+  # Oh-My-Zsh's $ZSH/plugins/<name> resolve) are built once per shell by
+  # .zinit-prepare-home, and `zinit delete' sweeps both away once the last OMZ
+  # snippet is gone.  Its own [[ ! -d ]] guard will not put them back while
+  # $SNIPPETS itself survives, so rebuild from scratch when they are missing.
+  ensure_snippets_home() {
+    [[ -h $SNIPPETS/plugins && -d $SNIPPETS/OMZ::plugins ]] && return 0
+    reset_snippets_dir
+  }
+
+  # Provisioning, not exercise: the recipe runs in a subshell so no function,
+  # $fpath entry or ice reaches the test, and silently so it stays out of the
+  # log the test asserts on.
+  provide_macos() {
+    ensure_snippets_home
+    if ! have_snippet OMZ::plugins/macos; then
+      ( omz_macos ) >/dev/null 2>&1 || true
+    fi
+    return 0
+  }
 }
 
 @test 'svn: OMZ::lib is downloaded as a directory snippet' {
   local dir="$SNIPPETS/OMZ::lib"
+
+  ensure_snippets_home
+  discard OMZ::lib
 
   run omz_lib
   local log="$(nocolor "$output")"
@@ -130,7 +167,8 @@
   # line.
   local before="$(command cksum < $probe)"
 
-  command rm -rf -- "$dir"
+  ensure_snippets_home
+  discard OMZ::lib
   GIT_CONFIG=$probe GIT_CONFIG_GLOBAL=$probe omz_lib || true
 
   assert "$(command cksum < $probe)" same_as "$before"
@@ -142,6 +180,9 @@
 }
 
 @test 'svn: OMZ::lib sources only pick and src' {
+  # In-shell, not `run': the assertions below are about what the recipe leaves
+  # behind in this shell.  That also downloads OMZ::lib if it is not there.
+  ensure_snippets_home
   omz_lib || true
 
   assert "$ZINIT_SNIPPETS[OMZ::lib]" contains '<svn>'
@@ -156,9 +197,11 @@
 }
 
 @test 'svn: OMZ::plugins/macos loads in turbo mode' {
-  # Must be the first test to touch this snippet -- atclone'' only fires on an
-  # actual download.
   local dir="$SNIPPETS/OMZ::plugins/macos"
+
+  # atclone'' only fires on an actual download, so start from nothing.
+  ensure_snippets_home
+  discard OMZ::plugins/macos
 
   run omz_macos_turbo
   local log="$(nocolor "$output")"
@@ -181,6 +224,8 @@
 }
 
 @test 'svn: OMZ::plugins/macos sources its sibling files' {
+  # In-shell, for the same reason as the OMZ::lib pick/src test.
+  ensure_snippets_home
   omz_macos || true
 
   assert "$ZINIT_SNIPPETS[OMZ::plugins/macos]" contains '<svn>'
@@ -196,6 +241,9 @@
 @test 'svn: a single-file snippet still records mode 0' {
   local dir="$SNIPPETS/OMZL::spectrum.zsh"
 
+  ensure_snippets_home
+  discard OMZL::spectrum.zsh
+
   run zinit snippet OMZL::spectrum.zsh
   assert $state equals 0
 
@@ -205,9 +253,8 @@
 }
 
 @test 'svn: a pruned snippets directory is rebuilt and redownloaded' {
-  # R3 -- "with ~/.zinit/snippets directory pruned".  This wipes OMZ::lib,
-  # OMZL::spectrum.zsh and PZT::modules/*, so it runs after the tests that use
-  # them, and redownloads OMZ::plugins/macos for the tests that follow.
+  # R3 -- "with ~/.zinit/snippets directory pruned".  This wipes every snippet
+  # in the run, which costs the tests around it a redownload and nothing else.
   reset_snippets_dir || true
 
   assert "$SNIPPETS"              is_dir
@@ -228,6 +275,8 @@
 @test 'svn: zinit update round-trips a directory snippet' {
   local dir="$SNIPPETS/OMZ::plugins/macos"
 
+  provide_macos
+
   # $state is deliberately not asserted: `zinit update <id>' returns 1 even on
   # a fully successful update, for directory and single-file snippets alike.
   run zinit update OMZ::plugins/macos
@@ -247,6 +296,8 @@
 @test 'svn: zinit status reports a directory snippet' {
   # Only the transport-independent header is asserted -- the body is a git log
   # line plus `git status --short' and will change with the implementation.
+  provide_macos
+
   run zinit status OMZ::plugins/macos
   local log="$(nocolor "$output")"
 
@@ -256,6 +307,9 @@
 
 @test 'svn: PZT::modules/prompt loads the sorin theme' {
   local dir="$SNIPPETS/PZT::modules/prompt"
+
+  ensure_snippets_home
+  discard PZT::modules/prompt
 
   run pzt_prompt
   local log="$(nocolor "$output")"
@@ -289,6 +343,12 @@
   # and silently produce an empty tree; the implementation must instead fail
   # loudly, name the path, and leave nothing on disk (in particular no
   # ._zinit/mode, which would orphan the entry in `zinit update --all').
+  #
+  # macos is the sibling asserted on at the end, so it has to be on disk
+  # before osx fails next to it.
+  provide_macos
+  discard OMZ::plugins/osx
+
   run omz_osx
   assert $state is_greater_than 0
   assert_osx_failed "$(nocolor "$output")"
@@ -299,14 +359,21 @@
 
 @test 'svn: a missing subdirectory fails cleanly in turbo mode' {
   # $state is not asserted -- @zinit-scheduler swallows task return codes.
+  ensure_snippets_home
+  discard OMZ::plugins/osx
+
   run omz_osx_turbo
   assert_osx_failed "$(nocolor "$output")"
 }
 
 @test 'svn: zinit delete removes a directory snippet' {
-  # Runs last: `zinit delete' also sweeps $SNIPPETS/plugins, an emptied
-  # $SNIPPETS/OMZ::plugins, and every dangling symlink under $ZINIT[HOME_DIR].
+  # Besides the snippet, `zinit delete' sweeps every empty directory under
+  # $SNIPPETS and every dangling symlink under $ZINIT[HOME_DIR], which can take
+  # $SNIPPETS/OMZ::plugins and the `plugins' symlink beside it with it.
+  # ensure_snippets_home() is what puts that skeleton back.
   local dir="$SNIPPETS/OMZ::plugins/macos"
+
+  provide_macos
 
   run zinit delete --yes OMZ::plugins/macos
   assert $state equals 0
