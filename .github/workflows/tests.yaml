@@ -26,8 +26,8 @@ on:
 
 jobs:
   zunit-tests:
-    name: '${{ matrix.zunit_test }} | ${{ matrix.os }}'
-    runs-on: "${{ matrix.os }}-latest" 
+    name: "${{ matrix.zunit_test }} | ${{ matrix.os }}"
+    runs-on: "${{ matrix.os }}-latest"
     strategy:
       fail-fast: false
       matrix:
@@ -44,18 +44,18 @@ jobs:
         os: [macos, ubuntu]
 
     steps:
-      - name: 'checkout ${{ github.repository }}'
+      - name: "checkout ${{ github.repository }}"
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
-      - name: 'install homebrew'
+      - name: "install homebrew"
         id: setup-homebrew
         uses: Homebrew/actions/setup-homebrew@1f8e202ffddf94def7f42f6fa3a482e821489f9c
         with:
           setup-sandbox: true
-          
-      - name: 'install ${{ runner.os }} dependencies'
+
+      - name: "install ${{ runner.os }} dependencies"
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update --yes
@@ -75,17 +75,17 @@ jobs:
       - name: "install dependencies via brew"
         id: install-deps
         run: |
-          brew install --quiet --force --overwrite autoconf automake binutils byacc coreutils curl gettext gnu-sed libevent libtool libuv lua lua@5.4 make ninja parallel pkg-config texinfo unzip xz zsh
+          brew install --quiet --force --overwrite autoconf automake binutils byacc coreutils curl gettext gnu-sed jemalloc libevent libtool libuv lua lua@5.4 make ninja parallel pkg-config texinfo unzip xz zsh
           brew unlink ncurses && brew link --force ncurses
-          
-      - name: 'checkout zdharma-continuum/zunit'
+
+      - name: "checkout zdharma-continuum/zunit"
         uses: actions/checkout@v7
         with:
-          repository: 'zdharma-continuum/zunit'
+          repository: "zdharma-continuum/zunit"
           path: zunit
-          ref: 'feat/run-tests-in-parallel-support'
+          ref: "feat/run-tests-in-parallel-support"
 
-      - name: 'install zunit'
+      - name: "install zunit"
         id: install-zunit
         shell: zsh {0}
         working-directory: zunit
@@ -95,5 +95,5 @@ jobs:
           ./configure --prefix=${HOME}/.local
           make all install
 
-      - name: 'run ${{ matrix.zunit_test }} tests'
-        run: zunit run tests/${{ matrix.zunit_test }}.zunit
+      - name: "run ${{ matrix.zunit_test }} tests"
+        run: zunit run --verbose tests/${{ matrix.zunit_test }}.zunit
