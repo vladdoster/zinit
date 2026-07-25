@@ -5,7 +5,9 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: 1
+  HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: 0
+  HOMEBREW_NO_REQUIRE_TAP_TRUST: 1
+  HOMEBREW_NO_SANDBOX_LINUX: 1 
   TERM: xterm-256color
 
 on:
@@ -49,7 +51,7 @@ jobs:
 
       - name: install homebrew
         id: setup-homebrew
-        uses: Homebrew/actions/setup-homebrew@master
+        uses: Homebrew/actions/setup-homebrew@1f8e202ffddf94def7f42f6fa3a482e821489f9c
 
       - name: "install musl"
         if: runner.os == 'Linux'
@@ -70,8 +72,8 @@ jobs:
       - name: "install dependencies"
         id: install-deps
         run: |
-          brew install --force --overwrite autoconf automake binutils byacc coreutils curl gettext gnu-sed libevent libtool libuv lua lua@5.4 make ncurses ninja parallel pkg-config texinfo unzip xz zsh
-          brew link --force --overwrite ncurses
+          brew install --quiet --force --overwrite autoconf automake binutils byacc coreutils curl gettext gnu-sed libevent libtool libuv lua lua@5.4 make ninja parallel pkg-config texinfo unzip xz zsh
+          brew unlink ncurses && brew link ncurses
 
       - name: "install zunit"
         id: install-zunit
