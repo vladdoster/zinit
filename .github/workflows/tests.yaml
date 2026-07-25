@@ -7,8 +7,10 @@ concurrency:
 env:
   HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: 0
   HOMEBREW_NO_REQUIRE_TAP_TRUST: 1
-  HOMEBREW_NO_SANDBOX_LINUX: 0
-  TERM: xterm-256color
+  HOMEBREW_SANDBOX_LINUX: 1
+  # TERM: xterm-256color
+  TERM: dumb
+
 
 on:
   pull_request:
@@ -52,8 +54,10 @@ jobs:
       - name: install homebrew
         id: setup-homebrew
         uses: Homebrew/actions/setup-homebrew@1f8e202ffddf94def7f42f6fa3a482e821489f9c
-
-      - name: "install musl"
+        with:
+          setup-sandbox: true
+          
+      - name: "install ${{ runner.os }} dependencies"
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update --yes
@@ -70,21 +74,27 @@ jobs:
             zsh
           brew install --force --quiet --build-from-source libcap bubblewrap
 
-      - name: "install dependencies"
+      - name: "install dependencies via brew"
         id: install-deps
         run: |
           brew install --quiet --force --overwrite autoconf automake binutils byacc coreutils curl gettext gnu-sed libevent libtool libuv lua lua@5.4 make ninja parallel pkg-config texinfo unzip xz zsh
           brew unlink ncurses && brew link --force ncurses
+          
+      - name: Checkout zunit repo
+        uses: actions/checkout@v7
+        with:
+          repository: zdharma-continuum/zunit
+          path: zunit
+          ref: feat/run-tests-in-parallel-support
 
       - name: "install zunit"
         id: install-zunit
         shell: zsh {0}
+        working-directory: zunit
         run: |
-          mkdir -p "$HOME/.local/bin"
+          mkdir -p "${HOME}/.local/bin"
           echo "$HOME/.local/bin" >> $GITHUB_PATH
-          git clone --depth 1 https://github.com/zdharma-continuum/zunit
-          cd ./zunit
-          ./configure --prefix=$HOME/.local
+          ./configure --prefix=${HOME}/.local
           make all install
 
       - name: "run tests"
