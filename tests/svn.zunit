@@ -26,8 +26,10 @@
 #   Disk state is shared, so the tests are ordered download-first/delete-last.
 #   Two have a hard ordering requirement, marked inline.  Every test can still
 #   (re)download what it needs, so a reorder costs runtime, never correctness.
-#   Do not run this file with `zunit -p': parallel mode slices one file's
-#   tests across subshells that share a single $zi_test_dir.
+#   `zunit -p' is safe – a file is one unit of work, so these run in one
+#   worker, in this order.  Never add `--slice', which splits the file across
+#   workers: each gets its own bootstrap and so its own empty $zi_test_dir,
+#   and every test that reads what an earlier one downloaded fails.
 
 @setup {
   typeset -gx HOME="$zi_test_dir"
