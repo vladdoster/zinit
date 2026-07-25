@@ -42,6 +42,11 @@ jobs:
           - snippets
           - svn
         os: [macos, ubuntu]
+        include:
+          - zunit_test: gh-r
+            zunit_flag: --slice
+          - zunit_test: plugins
+            zunit_flag: --slice
 
     steps:
       - name: "checkout ${{ github.repository }}"
@@ -95,4 +100,4 @@ jobs:
           make all install
 
       - name: "run ${{ matrix.zunit_test }} tests"
-        run: zunit run --verbose --slice tests/${{ matrix.zunit_test }}.zunit
+        run: zunit run ${{ matrix.zunit_flag }} tests/${{ matrix.zunit_test }}.zunit
