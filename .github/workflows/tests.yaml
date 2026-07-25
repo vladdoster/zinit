@@ -59,7 +59,7 @@ jobs:
           sudo apt-get update --yes
           sudo apt-get install --no-install-recommends --yes \
             autoconf automake autotools-dev \
-            build-essential byacc \
+            build-essential byacc bubblewrap \
             file \
             gcc gettext glibc-source grep \
             libc6 libc6-dev libevent-dev libncurses5-dev libncursesw5-dev libtool libuvc0 lua5.1 \
