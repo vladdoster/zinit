@@ -546,7 +546,8 @@ ZINIT[EXTENDED_GLOB]=""
     local user="${reply[-2]}" plugin="${reply[-1]}" uspl
     [[ "$user" = "%" ]] && uspl="${user}${plugin}" || uspl="${reply[-2]}${reply[-2]:+---}${reply[-1]//\//---}"
 
-    reply=( "${ZINIT[PLUGINS_DIR]}/$uspl"/**/_[^_.]*~*(*.zwc|*.html|*.txt|*.png|*.jpg|*.jpeg|*.js|*.md|*.yml|*.ri|_zsh_highlight*|/zsdoc/*|*.ps1)(DN) )
+    # No `validate' - a report must show what is actually on disk.
+    .zinit-find-completion-candidates "${ZINIT[PLUGINS_DIR]}/$uspl"
 } # ]]]
 # FUNCTION: .zinit-check-comp-consistency [[[
 # Zinit creates symlink for each installed completion.
@@ -636,7 +637,11 @@ ZINIT[EXTENDED_GLOB]=""
 
     .zinit-get-path "$1" "$2"
     [[ -e $REPLY ]] && {
-        completions=( $REPLY/**/_[^_.]*~*(*.zwc|*.html|*.txt|*.png|*.jpg|*.jpeg|*.js|*.md|*.yml|*.ri|_zsh_highlight*|/zsdoc/*|*.ps1)(DN) )
+        # No `validate' - uninstall must always be a superset of install, so
+        # that a symlink created by an older, laxer `creinstall' can still be
+        # removed instead of being orphaned in ${ZINIT[COMPLETIONS_DIR]}.
+        .zinit-find-completion-candidates "$REPLY"
+        completions=( "${reply[@]}" )
     } || {
         builtin print "No completions found for \`$1${${1:#(%|/)*}:+${2:+/}}$2'"
         return 1
@@ -1916,7 +1921,8 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
     typeset -a completions
     local pp
     for pp in "${plugin_paths[@]}"; do
-        completions=( "$pp"/**/_[^_.]*~*(*.zwc|*.html|*.txt|*.png|*.jpg|*.jpeg|*.js|*.md|*.yml|*.ri|_zsh_highlight*|/zsdoc/*|*.ps1|*.lua)(DN^/) )
+        .zinit-find-completion-candidates "$pp"
+        completions=( "${reply[@]}" )
         if [[ "${#completions[@]}" -gt 0 ]]; then
             local pd="${pp:t}"
             [[ "${#pd}" -gt "$longest" ]] && longest="${#pd}"
@@ -1927,7 +1933,8 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
 
     local c
     for pp in "${plugin_paths[@]}"; do
-        completions=( "$pp"/**/_[^_.]*~*(*.zwc|*.html|*.txt|*.png|*.jpg|*.jpeg|*.js|*.md|*.yml|*.ri|_zsh_highlight*|/zsdoc/*|*.ps1|*.lua)(DN^/) )
+        .zinit-find-completion-candidates "$pp"
+        completions=( "${reply[@]}" )
 
         if [[ "${#completions[@]}" -gt 0 ]]; then
             # Array of completions, e.g. ( _cp _xauth )
@@ -2367,7 +2374,12 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
     +zi-log "Disabled completions: {num}${#completions[@]}{rst}"
 
     # Number of completions existing in all plugins
-    completions=( "${ZINIT[PLUGINS_DIR]}"/*/**/_[^_.]*~*(*.zwc|*.html|*.txt|*.png|*.jpg|*.jpeg|*.js|*.md|*.yml|*.ri|_zsh_highlight*|/zsdoc/*|*.ps1)(DN) )
+    local pd
+    completions=()
+    for pd in "${ZINIT[PLUGINS_DIR]}"/*(DN/); do
+        .zinit-find-completion-candidates "$pd"
+        completions+=( "${reply[@]}" )
+    done
     +zi-log "Completions available overall: {num}${#completions[@]}{rst}"
 
     # Enumerate snippets loaded

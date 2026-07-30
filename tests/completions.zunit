@@ -1,0 +1,168 @@
+#!/usr/bin/env zunit
+
+#
+# zdharma-continuum/zinit/tests/completions.zunit
+# Copyright (c) 2016-2021 Sebastian Gniazdowski
+# Copyright (c) 2021-2026 zdharma-continuum
+# Homepage: https://github.com/zdharma-continuum/zinit
+# License: MIT License
+#
+# Detection rules for `_*' completion files. Every one of these must hold
+# identically for creinstall, cuninstall, report, csearch and zstatus - they
+# all go through .zinit-find-completion-candidates().
+#
+
+@setup {
+  ZPLUGINS=$ZINIT[PLUGINS_DIR]
+  ZCOMPS=$ZINIT[COMPLETIONS_DIR]
+  # zunit has no `not_exists' assertion; ices.zunit defines the same helper.
+  function _zunit_assert_not_exists(){
+    local file_path=$1
+    [[ ! -e "$file_path" ]] && return 0
+    echo "found '${file_path}'"
+    exit 1
+  }
+}
+
+@test 'underscore-directories are not completions' {
+  # Regression: zdharma-continuum/zunit ships tests/_support and tests/_output,
+  # which were matched by the globs behind `report', `cuninstall' and `zstatus'.
+  run zinit as"null" id-as"test/dircomp" \
+    atclone"mkdir -p tests/_support tests/_output; print '#compdef v' > _valid" \
+    completions for zdharma-continuum/null
+  assert $state equals 0
+  assert "$ZPLUGINS/test---dircomp/tests/_support" is_dir
+  assert "$ZPLUGINS/test---dircomp/tests/_output" is_dir
+  assert "$ZCOMPS/_valid" is_file
+  assert "$ZCOMPS/_support" not_exists
+  assert "$ZCOMPS/_output" not_exists
+}
+
+@test 'underscore-directories are hidden from csearch and cuninstall' {
+  # `zinit report' is not usable here - it needs a plugin loaded WITH reporting,
+  # and as'null' yields "No such plugin". csearch and cuninstall both walk the
+  # plugin directory directly, which is what this is really about.
+  run zinit as"null" id-as"test/dircomp2" \
+    atclone"mkdir -p tests/_support tests/_output; print '#compdef v' > _valid2" \
+    completions for zdharma-continuum/null
+  assert $state equals 0
+
+  run zinit csearch
+  assert $state equals 0
+  assert $output contains '_valid2'
+  assert $output does_not_contain '_support'
+  assert $output does_not_contain '_output'
+
+  # Before the fix this printed "Completion `_output' not installed." twice.
+  run zinit cuninstall test/dircomp2
+  assert $state equals 0
+  assert $output contains '_valid2'
+  assert $output does_not_contain '_support'
+  assert $output does_not_contain '_output'
+}
+
+@test 'a completion shipped as a symlink is still detected' {
+  # (.) would drop this and (^/) would keep symlinked directories - (-.) is
+  # the only qualifier that gets both cases right.
+  run zinit as"null" id-as"test/symcomp" \
+    atclone"print '#compdef real' > real; ln -s real _real" \
+    completions for zdharma-continuum/null
+  assert $state equals 0
+  assert "$ZCOMPS/_real" is_file
+}
+
+@test 'a dangling symlink is not installed as a completion' {
+  run zinit as"null" id-as"test/dangling" \
+    atclone"ln -s nowhere-at-all _dangling; print '#compdef o' > _ok" \
+    completions for zdharma-continuum/null
+  assert $state equals 0
+  assert "$ZCOMPS/_ok" is_file
+  assert "$ZCOMPS/_dangling" not_exists
+}
+
+@test 'the ignore list applies uniformly to install and to the listings' {
+  # The exclusion lists had drifted: *.yaml and *.py were filtered at install
+  # time only, so csearch/report/zstatus still listed them and `cuninstall'
+  # iterated them; *.lua was the mirror image - installed, but invisible to
+  # csearch. One shared list means every command now agrees.
+  run zinit as"null" id-as"test/uniform" \
+    atclone"print '#compdef t' | tee _thing _thing.py _thing.yaml _thing.lua > /dev/null" \
+    completions for zdharma-continuum/null
+  assert $state equals 0
+  assert "$ZCOMPS/_thing" is_file
+  assert "$ZCOMPS/_thing.py" not_exists
+  assert "$ZCOMPS/_thing.yaml" not_exists
+  assert "$ZCOMPS/_thing.lua" not_exists
+
+  run zinit csearch
+  assert $state equals 0
+  assert $output does_not_contain '_thing.py'
+  assert $output does_not_contain '_thing.yaml'
+  assert $output does_not_contain '_thing.lua'
+}
+
+@test 'files without a #compdef line are skipped, with a warning' {
+  # Installed via `creinstall', which carries no ice, so the content check
+  # applies (an explicit as'completion'/completions ice would bypass it).
+  run zinit as"null" id-as"test/untagged" \
+    atclone"touch _untagged; print '#compdef t' > _tagged" \
+    for zdharma-continuum/null
+  assert $state equals 0
+
+  run zinit creinstall test/untagged
+  assert $state equals 0
+  assert "$ZCOMPS/_tagged" is_file
+  assert "$ZCOMPS/_untagged" not_exists
+  assert $output contains '_untagged'
+}
+
+@test '#autoload helper functions count as completions' {
+  run zinit as"null" id-as"test/autoload" \
+    atclone"print '#autoload +X' > _helper" for zdharma-continuum/null
+  assert $state equals 0
+
+  run zinit creinstall test/autoload
+  assert $state equals 0
+  assert "$ZCOMPS/_helper" is_file
+}
+
+@test 'the completions ice forces an untagged file' {
+  # This is the contract that keeps tests/ices.zunit green.
+  run zinit as"null" id-as"test/forced" atclone"touch _forced" completions \
+    for zdharma-continuum/null
+  assert $state equals 0
+  assert "$ZCOMPS/_forced" is_file
+}
+
+@test 'completions-strict no restores lax detection' {
+  # The bootstrap pre-sets every ZINIT[KEY], which would mask the zstyle path,
+  # so exercise this in a clean `zsh -fc' subshell as config-zstyle.zunit does.
+  output=$(zsh -fc 'zmodload zsh/zutil; typeset -gAH ZINIT
+    ZINIT[BIN_DIR]='"${ZINIT[BIN_DIR]}"'
+    zstyle ":zinit:config" completions-strict no
+    source '"${ZINIT[BIN_DIR]}"'/zinit.zsh >/dev/null 2>&1
+    print -r -- ${ZINIT[COMPLETIONS_STRICT]}')
+  state=$?
+  assert $state equals 0
+  assert $output same_as 'no'
+}
+
+@test 'completion-ignore-dirs is anchored at the plugin directory' {
+  # A plugin whose install path contains a `test' component must not lose all
+  # of its completions: the filter runs on the path relative to the plugin.
+  output=$(zsh -fc 'typeset -gA ZINIT
+    ZINIT[COMPLETION_IGNORE]="*.zwc"
+    ZINIT[COMPLETION_IGNORE_DIRS]="tests|spec"
+    source '"${ZINIT[BIN_DIR]}"'/zinit-side.zsh
+    d=$(mktemp -d)/test/plugins/u---p
+    mkdir -p $d/tests
+    print "#compdef r" > $d/_root
+    print "#compdef n" > $d/tests/_nested
+    .zinit-find-completion-candidates $d
+    print -r -- ${(j:,:)${(@)reply:t}}')
+  state=$?
+  assert $state equals 0
+  assert $output same_as '_root'
+}
+
+# vim:ft=zsh:sw=2:sts=2:et:foldmarker=\ {,}:foldmethod=marker

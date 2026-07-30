@@ -42,6 +42,10 @@ if zmodload -F zsh/zutil +b:zstyle 2>/dev/null || (( ${+builtins[zstyle]} )); th
             no-aliases      NO_ALIASES       packages-branch  PACKAGES_BRANCH
             packages-repo   PACKAGES_REPO
             optimize-out-disk-accesses OPTIMIZE_OUT_DISK_ACCESSES
+            completion-ignore       COMPLETION_IGNORE
+            completion-ignore-extra COMPLETION_IGNORE_EXTRA
+            completion-ignore-dirs  COMPLETION_IGNORE_DIRS
+            completions-strict      COMPLETIONS_STRICT
         )
         for _attr _key in "${(kv)_map[@]}"; do
             [[ -n ${ZINIT[$_key]} ]] && continue
@@ -101,6 +105,23 @@ if [[ -z ${ZINIT[LIST_COMMAND]} ]]; then
         ZINIT[LIST_COMMAND]='ls --tree'
     fi
 fi
+
+# Path/filename patterns that are never Zsh completions even though the basename
+# starts with an underscore. This is an `extendedglob' alternation body, used as
+# `...~*(<here>)': every alternative is implicitly prefixed with `*' and matched
+# against the WHOLE path, including the ${ZINIT[PLUGINS_DIR]} prefix. Never add a
+# bare directory component such as `/tests/*' here - it would also match a prefix
+# like /home/me/test/... and silently discard every completion. Use
+# ZINIT[COMPLETION_IGNORE_DIRS] for that; it is anchored at the plugin directory.
+: ${ZINIT[COMPLETION_IGNORE]:="*.zwc|*.html|*.txt|*.png|*.jpg|*.jpeg|*.js|*.md|*.yml|*.yaml|*.py|*.ri|*.lua|*.ps1|*.ps1.in|*.fish|*.t|_zsh_highlight*|/zsdoc/*"}
+# Appended to the above, for extending rather than replacing the default.
+: ${ZINIT[COMPLETION_IGNORE_EXTRA]:=}
+# Anchored at the plugin directory: an alternation of directory names, e.g.
+# "tests|test|spec|node_modules". Empty by default.
+: ${ZINIT[COMPLETION_IGNORE_DIRS]:=}
+# Skip completion files that carry no `#compdef'/`#autoload' first line, i.e. the
+# directive that `compinit' itself looks for.
+: ${ZINIT[COMPLETIONS_STRICT]:=yes}
 
 ZINIT[ice-list]="\
 \!bash|\!csh|\!ksh|\!sh|\

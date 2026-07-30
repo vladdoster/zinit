@@ -265,6 +265,80 @@
   fi
   return 0
 } # ]]]
+# FUNCTION: .zinit-find-completion-candidates [[[
+# Scans a directory tree for files that look like Zsh completion functions, i.e.
+# `_name' files. This is THE single place where the detection rules live; every
+# other site calls this instead of open-coding a glob, so that `creinstall',
+# `cuninstall', `report', `csearch' and `zstatus' can never disagree with each
+# other.
+#
+# Rejects, in order:
+#   - anything that is not a plain file after resolving symlinks - the (-.)
+#     qualifier. This drops directories (e.g. a plugin's tests/_output), symlinks
+#     to directories, dangling symlinks, fifos, sockets and devices, while
+#     keeping the legitimate case of a completion shipped as a symlink to a
+#     regular file. `(^/)' keeps symlinked directories and `(.)' drops symlinked
+#     files - neither is correct on its own.
+#   - names matching ${ZINIT[COMPLETION_IGNORE]} (plus …_EXTRA), matched against
+#     the whole path.
+#   - anything under a directory named in ${ZINIT[COMPLETION_IGNORE_DIRS]},
+#     matched against the path RELATIVE to $1 (empty by default).
+#
+# $1 - directory to scan
+# $2 - the literal word `validate' to additionally read the first line of each
+#      candidate and classify it
+#
+# $reply  - the candidate completion files. Under `validate' with
+#           ZINIT[COMPLETIONS_STRICT] set, the untagged ones are removed.
+# $reply2 - candidates whose first line is not `#compdef'/`#autoload'. Always
+#           emptied; only ever filled when $2 = validate.
+.zinit-find-completion-candidates() {
+  builtin emulate -LR zsh ${=${options[xtrace]:#off}:+-o xtrace}
+  builtin setopt extendedglob nullglob typesetsilent warncreateglobal noshortloops
+
+  typeset -ga reply reply2
+  local __dir=${1%/} __ign __c __rel __raw __first
+  local -a __w __ok __keep
+
+  reply=( ) reply2=( )
+  [[ -z $__dir ]] && return 0
+
+  __ign=${ZINIT[COMPLETION_IGNORE]}${ZINIT[COMPLETION_IGNORE_EXTRA]:+\|${ZINIT[COMPLETION_IGNORE_EXTRA]}}
+  reply=( $__dir/**/_[^_.]*~*(${~__ign})(DN-.) )
+
+  # Anchored directory-name filter. The path is stripped by index rather than
+  # with ${__c#$__dir}, because the latter would treat $__dir as a pattern.
+  if [[ -n ${ZINIT[COMPLETION_IGNORE_DIRS]} ]]; then
+    for __c in $reply; do
+      __rel=${__c[${#__dir}+2,-1]}
+      [[ /$__rel == */(${~ZINIT[COMPLETION_IGNORE_DIRS]})/* ]] && continue
+      __keep+=( $__c )
+    done
+    reply=( $__keep )
+  fi
+
+  [[ $2 != validate ]] && return 0
+
+  # Mirrors what compinit itself does when it walks $fpath: split the first line
+  # on space/tab and look at word one. `read -k 64' bounds the read, so a
+  # multi-megabyte single-line file cannot be slurped; it also copes with an
+  # empty file, a missing trailing newline, embedded NULs, and an unreadable or
+  # vanished file (non-zero return, $__raw stays empty).
+  for __c in $reply; do
+    __raw=
+    { read -r -k 64 -u 0 __raw } < $__c 2>/dev/null
+    __first=${__raw%%$'\n'*}
+    __w=( ${${(s: :)${${__first//$'\t'/ }##[[:blank:]]#}}:#} )
+    if [[ ${__w[1]} == (\#compdef|\#autoload) ]]; then
+      __ok+=( $__c )
+    else
+      reply2+=( $__c )
+    fi
+  done
+  [[ ${ZINIT[COMPLETIONS_STRICT]} == (1|true|on|yes) ]] && reply=( $__ok )
+
+  return 0
+} # ]]]
 # FUNCTION: .zinit-first [[[
 # Finds the main file of plugin. There are multiple file name formats, they are
 # ordered in order starting from more correct ones, and matched.

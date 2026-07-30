@@ -562,18 +562,41 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
 
     # Symlink any completion files included in the plugin directory
     typeset -a completions already_symlinked backup_comps
-    local c cfile bkpfile
+    local c cfile bkpfile ctarget
+    # An explicit as'completion' or `completions' ice means the user declared
+    # these files completions, so don't second-guess their contents.
+    local validate=validate
+    [[ ${+ICE[completions]} -eq 1 || ${ICE[as]} = completion ]] && validate=
+
     # The plugin == . is a semi-hack/trick to handle 'creinstall .' properly
-    [[ $user == % || ( -z $user && $plugin == . ) ]] && \
-        completions=( "${plugin}"/**/_[^_.]*~*(*.zwc|*.html|*.txt|*.png|*.jpg|*.jpeg|*.js|*.md|*.yml|*.yaml|*.py|*.ri|_zsh_highlight*|/zsdoc/*|*.ps1)(DN^/) ) || \
-        completions=( "${ZINIT[PLUGINS_DIR]}/${id_as//\//---}"/**/_[^_.]*~*(*.zwc|*.html|*.txt|*.png|*.jpg|*.jpeg|*.js|*.md|*.yml|*.yaml|*.py|*.ri|_zsh_highlight*|/zsdoc/*|*.ps1)(DN^/) )
+    if [[ $user == % || ( -z $user && $plugin == . ) ]]; then
+        .zinit-find-completion-candidates "$plugin" $validate
+    else
+        .zinit-find-completion-candidates "${ZINIT[PLUGINS_DIR]}/${id_as//\//---}" $validate
+    fi
+    completions=( "${reply[@]}" )
+
+    # Deliberately not gated on `quiet': the clone path forces quiet=1 (see
+    # .zinit-setup-plugin-dir), and a completion silently vanishing is the worst
+    # possible failure shape. Only -Q ("quiet all") and MUTE_WARNINGS suppress it.
+    if (( ${#reply2} )) && [[ ${ZINIT[MUTE_WARNINGS]} != (1|true|on|yes) ]] && (( quiet < 2 )); then
+        +zi-log "{u-warn}Warning{b-warn}:{rst} skipping {num}${#reply2}{rst} file(s) with no" \
+            "{file}#compdef{rst}/{file}#autoload{rst} first line{ehi}:{rst} {file}${(j:, :)${(@)reply2:t}}{rst}" \
+            "{msg2}(set {var}zstyle ':zinit:config' completions-strict no{msg2} to install them anyway.){rst}"
+    fi
+
     already_symlinked=( "${ZINIT[COMPLETIONS_DIR]}"/_[^_.]*~*.zwc(DN) )
     backup_comps=( "${ZINIT[COMPLETIONS_DIR]}"/[^_.]*~*.zwc(DN) )
 
     # Symlink completions if they are not already there
     # either as completions (_fname) or as backups (fname)
     # OR - if its a reinstall
-    for c in "${completions[@]:A}"; do
+    # $c keeps the name as the plugin ships it, so that a completion shipped as
+    # a symlink (e.g. `ln -s foo.zsh-completion _foo') is installed under `_foo'
+    # rather than under its target's basename; $ctarget is the resolved path the
+    # symlink in the completions directory points at.
+    for c in "${completions[@]}"; do
+        ctarget="${c:A}"
         cfile="${c:t}"
         bkpfile="${cfile#_}"
         if [[ ( -z ${already_symlinked[(r)*/$cfile]} || $reinstall = 1 ) &&
@@ -585,7 +608,7 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
             fi
             INSTALLED_COMPS+=( $cfile )
             (( quiet )) || builtin print -Pr "Symlinking completion ${ZINIT[col-uname]}$cfile%f%b to completions directory."
-            command ln -fs "$c" "${ZINIT[COMPLETIONS_DIR]}/$cfile"
+            command ln -fs "$ctarget" "${ZINIT[COMPLETIONS_DIR]}/$cfile"
             # Make compinit notice the change
             .zinit-forget-completion "$cfile" "$quiet"
         else

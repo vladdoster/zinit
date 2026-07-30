@@ -35,6 +35,7 @@ jobs:
           - annexes
           - commands
           - compile
+          - completions
           - config-zstyle
           - gh-r
           - ices
