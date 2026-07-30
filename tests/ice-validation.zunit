@@ -140,7 +140,9 @@
     assert $state equals 0
     assert $output contains 'wait'
     assert $output contains 'x'
-    assert $output contains 'Expected one of: a, b, c'
+    # The letters in the suffix list are colored one by one, so the
+    # phrase only exists once the escape codes are stripped
+    assert "$(nocolor "$output")" contains 'Expected one of: a, b, c'
 }
 
 @test 'wait-invalid-suffix-d' {
@@ -271,6 +273,12 @@
 }
 
 @test 'for-invalid-as' {
+    # zdharma-continuum/null ships no sourceable files, so on a fresh
+    # download the measured call would inherit the compile hook's
+    # failure. Install it first, with the null ice that skips
+    # compilation, so the as'' warning is what the assertions see
+    run zinit null for @zdharma-continuum/null
+    assert $state equals 0
     run zinit for as'none' @zdharma-continuum/null
     assert $state equals 0
     assert $output contains 'as'

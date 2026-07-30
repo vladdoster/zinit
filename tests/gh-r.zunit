@@ -552,6 +552,13 @@
   run $mkcert --version; assert $state equals 0
 }
 @test 'mmake' { # A Make/rake-like dev tool using Go
+  # tj/mmake ships only x86_64 darwin assets, and the binary execs
+  # make - so on arm64 it needs CLT shims that still carry an x86_64
+  # slice. Probe that exact capability rather than the OS version
+  if [[ $OSTYPE == darwin* && $CPUTYPE == arm64 ]] \
+    && ! arch -x86_64 /usr/bin/make --version >/dev/null 2>&1; then
+    skip 'x86_64 make cannot run on this CLT'
+  fi
   run zinit for ver'v1.4.0' @tj/mmake; assert $state equals 0
   local mmake="$ZBIN/mmake"; assert "$mmake" is_executable
   run $mmake --version; assert $state equals 0

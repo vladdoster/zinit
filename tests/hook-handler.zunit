@@ -12,8 +12,11 @@
   ZINIT[SNIPPETS_DIR]="$zi_test_dir/snippets"
   ZINIT[HOME_DIR]="$zi_test_dir"
   
-  # Source zinit
-  source "${PWD}/zinit.zsh"
+  # Source zinit. Test bodies run with ERR_EXIT set, and zinit.zsh is
+  # not ERR_EXIT-clean - its config-reading loop ends on a zstyle
+  # lookup that returns 1 when the style is unset. Sourcing on the
+  # left of `||' suspends ERR_EXIT for everything the file runs
+  source "${PWD}/zinit.zsh" || true
 }
 
 @test 'empty hook handler error is prevented by fix' {

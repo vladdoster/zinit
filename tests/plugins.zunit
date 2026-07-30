@@ -83,7 +83,7 @@
 # }
 @test 'tmux' {
   if [[ $OSTYPE =~ 'darwin*' ]]; then
-    run zinit configure'--disable-utf8proc' make for @tmux/tmux; assert $state equals 0
+    run zinit configure'--disable-utf8proc --disable-jemalloc' make for @tmux/tmux; assert $state equals 0
   else
     run zinit build for @tmux/tmux; assert $state equals 0
   fi

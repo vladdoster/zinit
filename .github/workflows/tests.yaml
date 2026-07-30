@@ -40,6 +40,7 @@ jobs:
           - ices
           - plugins
           - snippets
+          - svn
         os: [macos, ubuntu]
         include:
           - zunit_test: gh-r
