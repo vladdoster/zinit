@@ -147,6 +147,204 @@
   assert $output same_as 'no'
 }
 
+@test 'a completion named by its #compdef line installs under that name' {
+  # g-plane/pnpm-shell-completion ships `pnpm-shell-completion.plugin.zsh',
+  # mislav/hub ships `hub.zsh_completion' - names compinit would never look at.
+  run zinit as"null" id-as"test/derived" \
+    atclone"print '#compdef drv' > drv.plugin.zsh" \
+    completions for zdharma-continuum/null
+  assert $state equals 0
+  assert "$ZCOMPS/_drv" is_file
+  assert "$ZCOMPS/drv.plugin.zsh" not_exists
+}
+
+@test 'a derived-name completion is visible to csearch and cuninstall' {
+  # The regression this whole file exists to prevent: install used to know about
+  # these files and every listing command did not, so the symlink was invisible
+  # to `csearch'/`report' and `cuninstall' orphaned it.
+  run zinit as"null" id-as"test/derived2" \
+    atclone"print '#compdef drv2' > drv2.plugin.zsh" \
+    completions for zdharma-continuum/null
+  assert $state equals 0
+  assert "$ZCOMPS/_drv2" is_file
+
+  run zinit csearch
+  assert $state equals 0
+  assert $output contains '_drv2'
+
+  run zinit cuninstall test/derived2
+  assert $state equals 0
+  assert $output contains '_drv2'
+  assert "$ZCOMPS/_drv2" not_exists
+}
+
+@test 'only the first command of a #compdef line names the file' {
+  run zinit as"null" id-as"test/multi" \
+    atclone"print '#compdef mcc m++ mc' > multi.zsh" \
+    completions for zdharma-continuum/null
+  assert $state equals 0
+  assert "$ZCOMPS/_mcc" is_file
+  assert "$ZCOMPS/_mccm++mc" not_exists
+}
+
+@test 'the #compdef -p pattern form names no file and is skipped' {
+  run zinit as"null" id-as"test/patform" \
+    atclone"print '#compdef -p gitp-*' > patform.zsh; print '#compdef okp' > okp.zsh" \
+    completions for zdharma-continuum/null
+  assert $state equals 0
+  assert "$ZCOMPS/_okp" is_file
+  assert "$ZCOMPS/_-p" not_exists
+}
+
+@test 'a real _name file wins a collision with a derived name' {
+  run zinit as"null" id-as"test/collide" \
+    atclone"print '#compdef cld real' > _cld; print '#compdef cld' > cld.zsh" \
+    completions for zdharma-continuum/null
+  assert $state equals 0
+  assert "$ZCOMPS/_cld" is_file
+
+  output="$(readlink $ZCOMPS/_cld)"
+  state=$?
+  assert $state equals 0
+  assert "${output:t}" same_as '_cld'
+}
+
+@test 'a compiled .zwc is never installed as a completion' {
+  run zinit as"null" id-as"test/zwc" \
+    atclone"print '#compdef zwcok' > zwcok.zsh; print '#compdef zwcbad' > zwcbad.zsh.zwc" \
+    completions for zdharma-continuum/null
+  assert $state equals 0
+  assert "$ZCOMPS/_zwcok" is_file
+  assert "$ZCOMPS/_zwcbad" not_exists
+}
+
+@test 'the derivation rules hold uniformly' {
+  # One pass over every rule at once, without the network round-trip: the
+  # install name of each candidate, in scan order.
+  output=$(zsh -fc 'typeset -gA ZINIT
+    ZINIT[COMPLETION_IGNORE]="*.zwc|*.py"
+    ZINIT[COMPLETIONS_STRICT]=yes
+    ZINIT[COMPLETION_DERIVE_NAMES]=yes
+    source '"${ZINIT[BIN_DIR]}"'/zinit-side.zsh
+    d=$(mktemp -d)/u---p
+    mkdir -p $d
+    print "#autoload +X"      > $d/_helper
+    print "#compdef foo"      > $d/_foo
+    print "#compdef bar"      > $d/bar.plugin.zsh
+    print "#compdef gcc g++"  > $d/multi.zsh
+    print "#compdef -p pat-*" > $d/patform.zsh
+    print "#compdef hub"      > $d/hub.zsh_completion
+    print "#compdef zwc"      > $d/cached.zsh.zwc
+    print "#compdef foo"      > $d/foo.zsh
+    print "just a script"     > $d/other.zsh
+    .zinit-find-completion-candidates $d validate
+    print -r -- ${(j:,:)reply3}')
+  state=$?
+  assert $state equals 0
+  assert $output same_as '_foo,_helper,_bar,_hub,_gcc'
+}
+
+@test 'completion-derive-names no requires the _name convention' {
+  output=$(zsh -fc 'typeset -gA ZINIT
+    ZINIT[COMPLETION_IGNORE]="*.zwc"
+    ZINIT[COMPLETION_DERIVE_NAMES]=no
+    source '"${ZINIT[BIN_DIR]}"'/zinit-side.zsh
+    d=$(mktemp -d)/u---p
+    mkdir -p $d
+    print "#compdef dn" > $d/dn.zsh
+    print "#compdef ok" > $d/_ok
+    .zinit-find-completion-candidates $d
+    print -r -- ${(j:,:)reply3}')
+  state=$?
+  assert $state equals 0
+  assert $output same_as '_ok'
+}
+
+@test 'a local-directory plugin reports its completions' {
+  # zinit-autoload.zsh used to hand-build ${PLUGINS_DIR}/%$plugin here, a path
+  # that can never exist, so `zinit report' on a local directory or a snippet
+  # always claimed zero completions - independently of the naming question.
+  output=$(zsh -fc 'typeset -gA ZINIT
+    ZINIT[BIN_DIR]='"${ZINIT[BIN_DIR]}"'
+    source '"${ZINIT[BIN_DIR]}"'/zinit.zsh >/dev/null 2>&1
+    source '"${ZINIT[BIN_DIR]}"'/zinit-autoload.zsh >/dev/null 2>&1
+    d=$(mktemp -d)/localplug
+    mkdir -p $d/._zinit
+    print "#compdef lcl" > $d/_lcl
+    print "#compdef drv" > $d/drv.plugin.zsh
+    .zinit-find-completions-of-plugin "%" "$d"
+    print -r -- ${(j:,:)reply3}' 2>/dev/null)
+  state=$?
+  assert $state equals 0
+  assert $output same_as '_lcl,_drv'
+}
+
+@test 'a .zsh-completion file is named by its #compdef line' {
+  # molovo/revolver's shape, hermetically: the `*.zsh-completion' glob arm is
+  # not reached by any of the tests above, which all use `.plugin.zsh'/`.zsh'.
+  run zinit as"null" id-as"test/revcomp" \
+    atclone"print '#compdef revc' > revc.zsh-completion" \
+    completions for zdharma-continuum/null
+  assert $state equals 0
+  assert "$ZCOMPS/_revc" is_file
+  assert "$ZCOMPS/revc.zsh-completion" not_exists
+}
+
+@test 'molovo/revolver: install, report, cdisable, cenable' {
+  # The real recipe, verbatim:
+  #   zinit ice wait"2" lucid as"program" pick"revolver"
+  #   zinit light molovo/revolver
+  # revolver ships `revolver.zsh-completion' whose first line is `#compdef
+  # revolver' - no `_revolver' anywhere in the repository.
+  #
+  # `wait'' is driven by `zle -F'/precmd, and a zunit test shell has neither;
+  # the fresh-clone shortcut (zinit.zsh:2887) needs ${zsh_eval_context[1]} =
+  # file, which only holds for a sourced .zshrc - inside zunit it is `toplevel'.
+  # Left alone the recipe just queues a ZINIT_TASKS entry and returns.
+  # `@zinit-scheduler burst' is the documented scripted equivalent: it marks
+  # every task timed out and skips the `zle -F' re-arm (zinit.zsh:2542-2552).
+  #
+  # zunit only unsets ERR_EXIT inside `run', and a bare `zinit light' trips it.
+  unsetopt ERR_EXIT
+
+  zinit ice wait"2" lucid as"program" pick"revolver"
+  zinit light molovo/revolver
+  assert "${#ZINIT_TASKS}" is_greater_than 0
+  @zinit-scheduler burst
+
+  assert "$ZPLUGINS/molovo---revolver/revolver.zsh-completion" is_file
+  assert "$ZCOMPS/_revolver" is_link
+
+  # `light' registers the plugin just as `load' does (zinit.zsh:1749); only the
+  # diff sections come back empty. The Completions block is filesystem-derived.
+  # The name is printed uncoloured and the state wrapped in SGR escapes, so
+  # these have to be two separate assertions.
+  run zinit report molovo/revolver
+  assert $state equals 0
+  assert $output contains '_revolver'
+  assert $output contains '[enabled]'
+
+  run zinit cdisable revolver
+  assert $state equals 0
+  assert $output contains 'Disabled'
+  assert "$ZCOMPS/_revolver" not_exists
+  assert "$ZCOMPS/revolver" is_link
+
+  run zinit report molovo/revolver
+  assert $state equals 0
+  assert $output contains '_revolver'
+  assert $output contains '[disabled]'
+
+  run zinit cenable revolver
+  assert $state equals 0
+  assert $output contains 'Enabled'
+  assert "$ZCOMPS/_revolver" is_link
+
+  run zinit report molovo/revolver
+  assert $state equals 0
+  assert $output contains '[enabled]'
+}
+
 @test 'completion-ignore-dirs is anchored at the plugin directory' {
   # A plugin whose install path contains a `test' component must not lose all
   # of its completions: the filter runs on the path relative to the plugin.
