@@ -964,8 +964,24 @@ completion into `$ZINIT[COMPLETIONS_DIR]`, which is on `fpath`. A file qualifies
 Rule 4 is skipped when you say `as'completion'` or pass the `completions` ice: those declare the file a completion
 explicitly, which matters for completions generated at install time by `atclone''`.
 
-All of `zinit creinstall`, `cuninstall`, `csearch`, `report` and `zstatus` apply the same rules, so their output always
-agrees.
+Some plugins ship their completion under a name `compinit` would never look at – `pnpm-shell-completion.plugin.zsh`,
+`hub.zsh_completion`, `completions/foo.zsh`. Such a file is also installed, **under the name its `#compdef` line asks
+for**, so `foo.plugin.zsh` beginning with `#compdef foo` is symlinked as `_foo`. This arm is narrower than the one
+above:
+
+- Only `*.zsh`, `*.zsh-completion`, `*.zsh_completion`, `*-completion`, `*_completion` and `*.compdef` files are
+  considered, and rules 2 and 3 still apply.
+- The `#compdef` line is **always** required – `as'completion'`, the `completions` ice and `completions-strict no` do
+  not waive it, because without it there is no name to derive. The `#compdef -p`/`-P`/`-k`/`-K`/`-N`/`-a` forms name no
+  single command and so are not installed either.
+- Only the first command is used: `#compdef gcc g++ cc` installs as `_gcc`, and `compinit` binds the rest itself by
+  reading the very same line.
+- A real `_foo` in the same plugin always wins over a `foo.zsh` that merely claims `#compdef foo`.
+
+Set `zstyle ':zinit:config' completion-derive-names no` to turn this arm off and require `mv'foo.zsh -> _foo'` instead.
+
+All of `zinit creinstall`, `cuninstall`, `csearch`, `report` and `zstatus` apply the same rules and report the same
+install names, so their output always agrees.
 
 ### Calling `compinit` Without Turbo Mode<a name="calling-compinit-without-turbo-mode"></a>
 
@@ -1178,6 +1194,7 @@ declare -A ZINIT  # initial Zinit's hash definition, if configuring before loadi
 | ZINIT\[COMPLETION_IGNORE\]          | Alternation of patterns that are never completions even though the basename starts with `_`, e.g. `*.py\|*.fish`. Matched against the whole path, so never put a bare directory component like `/tests/*` here – use `ZINIT[COMPLETION_IGNORE_DIRS]` instead                                                                                                                                             |
 | ZINIT\[COMPLETION_IGNORE_EXTRA\]    | Appended to the above, for extending the default list rather than replacing it                                                                                                                                                                                                                                                                                                                          |
 | ZINIT\[COMPLETION_IGNORE_DIRS\]     | Alternation of directory names to skip, anchored at the plugin directory, e.g. `tests\|spec\|node_modules`. Empty by default                                                                                                                                                                                                                                                                            |
+| ZINIT\[COMPLETION_DERIVE_NAMES\]    | Default: `yes`. Also treat a file that is **not** named `_something` as a completion when its first line is `#compdef <cmd>`, installing it as `_<cmd>` – so a plugin shipping `pnpm-shell-completion.plugin.zsh` or `hub.zsh_completion` needs no `mv''` ice. Set to `no` to require the `_name` convention                                                                                              |
 | ZINIT\[MUTE_WARNINGS\]              | If set to `1`, then mutes some of the Zinit warnings, specifically the `plugin already registered` warning                                                                                                                                                                                                                                                                                               |
 | ZINIT\[OPTIMIZE_OUT_DISK_ACCESSES\] | If set to `1`, then Zinit will skip checking if a Turbo-loaded object exists on the disk. By default Zinit skips Turbo for non-existing objects (plugins or snippets) to install them before the first prompt – without any delays, during the normal processing of `zshrc`. This option can give a performance gain of about 10 ms out of 150 ms (i.e.: Zsh will start up in 140 ms instead of 150 ms). |
 | ZINIT\[NO_ALIASES\]                 | If set to `1`, then Zinit will not set aliases such as `zi` or `zini`                                                                                                                                                                                                                                                                                                                                    |
