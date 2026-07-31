@@ -112,6 +112,122 @@ __zinit_list_aliases(){
   aliases=( ls list uninstall delete )
   builtin print -- "$aliases"
 } # ]]]
+# FUNCTION: __zinit_completions_enabled [[[
+# Completions that `cdisable' can act on. An enabled completion is the `_name'
+# symlink in ${ZINIT[COMPLETIONS_DIR]}; `cdisable' renames it to `name', so the
+# enabled and disabled sets are disjoint.
+#
+# The bare `cname' is offered - that is what `zinit completions' prints and what
+# the dispatcher normalizes to (`_${2#_}', zinit.zsh:3114), so both spellings
+# work when typed by hand.
+#
+# (N), not (N-.): a disabled completion is often ALSO a stray symlink whose
+# target has gone away, and those are exactly the ones a user needs to reach.
+__zinit_completions_enabled(){
+  typeset -a comps
+  local expl
+  comps=( "${ZINIT[COMPLETIONS_DIR]}"/_[^_.]*~*.zwc(N:t) )
+  comps=( ${comps[@]#_} )
+  _wanted completions expl 'enabled completion' compadd -a - comps
+} # ]]]
+# FUNCTION: __zinit_completions_disabled [[[
+# Completions that `cenable' can act on - the ones `cdisable' has renamed to
+# drop their leading underscore.
+__zinit_completions_disabled(){
+  typeset -a comps
+  local expl
+  comps=( "${ZINIT[COMPLETIONS_DIR]}"/[^_.]*~*.zwc(N:t) )
+  _wanted completions expl 'disabled completion' compadd -a - comps
+} # ]]]
+# FUNCTION: __zinit_objects_with_completions [[[
+# Plugins and snippets owning at least one installed completion, enabled or not,
+# described by the completions they own. `cuninstall' takes a plg-spec and not a
+# completion name (zinit.zsh:3162), so the id is what gets inserted; the names
+# are shown only so that the listing answers "which one holds _foo?".
+#
+# Owner derived inline: .zinit-get-completion-owner forks per file and lives in
+# zinit-autoload.zsh, which is not sourced yet at completion time.
+#
+# The link is read one hop with `zstat -L +link' (a builtin - no fork) rather
+# than with `:A', because `:A' on a DANGLING symlink returns the symlink's own
+# path unchanged, which would silently drop every stray completion - precisely
+# the ones worth uninstalling.
+#
+# The target is then matched against both the raw and the `:A' form of each
+# directory: ${ZINIT[HOME_DIR]} is very often reached through a symlink (a
+# dotfiles checkout), and the link may have been written with either spelling.
+__zinit_objects_with_completions(){
+  typeset -A owned
+  typeset -a descr link pdirs sdirs
+  local c d id t
+
+  pdirs=( "${ZINIT[PLUGINS_DIR]}" "${ZINIT[PLUGINS_DIR]:A}" )
+  sdirs=( "${ZINIT[SNIPPETS_DIR]}" "${ZINIT[SNIPPETS_DIR]:A}" )
+
+  for c in "${ZINIT[COMPLETIONS_DIR]}"/_[^_.]*~*.zwc(N) "${ZINIT[COMPLETIONS_DIR]}"/[^_.]*~*.zwc(N); do
+    t= link=()
+    (( ${+ZINIT[HAVE_ZSTAT]} )) && zstat -L -A link +link -- "$c" 2>/dev/null && t="${link[1]}"
+    [[ -z $t ]] && t="${c:A}"
+
+    id=
+    for d in $pdirs; do
+      [[ -n $d && $t == $d/* ]] && { id="${${${t#$d/}%%/*}//---//}"; break }
+    done
+    if [[ -z $id ]]; then
+      for d in $sdirs; do
+        [[ -n $d && $t == $d/* ]] && { id="${(Q)${${t#$d/}:h}}"; break }
+      done
+    fi
+    [[ -z $id ]] && continue
+    owned[$id]+="${c:t} "
+  done
+
+  # Snippet ids carry `:' (OMZ::plugins/gitfast), which _describe would take as
+  # the item/description separator.
+  for id in ${(ko)owned}; do
+    descr+=( "${id//:/\\:}:${owned[$id]% }" )
+  done
+  _describe -t plugins 'plugin or snippet owning a completion' descr
+} # ]]]
+# FUNCTION: __zinit_registered_plugins [[[
+# Plugins loaded in THIS session. `report' gates on this array and nothing else
+# (.zinit-exists-message, zinit-autoload.zsh:293), so an installed-but-not-loaded
+# plugin - and every snippet, which is tracked in ZINIT_SNIPPETS instead - can
+# only ever answer "No such plugin". `zinit light' registers too; it just yields
+# a report with no diff sections.
+#
+# Zinit registers itself twice - as `_local/zinit' and, in `%'-form, as its own
+# ${ZINIT[BIN_DIR]}. Both name the same object, and the first is already hidden
+# by every other listing, so drop both rather than offer an absolute path.
+__zinit_registered_plugins(){
+  typeset -a loaded
+  local expl
+  loaded=( ${${ZINIT_REGISTERED_PLUGINS[@]:#_local/zinit}:#%${ZINIT[BIN_DIR]}} )
+  (( $#loaded )) || { __zinit_installed_plugins; return }
+  _wanted plugins expl 'loaded plugin' compadd -a - loaded
+} # ]]]
+# FUNCTION: __zinit_self [[[
+# Zinit's own completion. It IS a real plugin - zinit creates
+# ${ZINIT[PLUGINS_DIR]}/_local---zinit/ holding a symlink to `_zinit' - but
+# `__zinit_installed_plugins' and the ZINIT_REGISTERED_PLUGINS listing both
+# filter its id out, which left it impossible to tab-complete at all.
+#
+# The id is offered verbatim. `zinit' is deliberately NOT offered as a shorthand:
+# there is no plugins/zinit, so `.zinit-get-path zinit' resolves to a directory
+# that does not exist and the command answers "No such plugin".
+__zinit_self(){
+  local expl
+  [[ -d ${ZINIT[PLUGINS_DIR]}/_local---zinit ]] || return 1
+  _wanted zinit expl 'zinit itself' compadd - _local/zinit
+} # ]]]
+# FUNCTION: __zinit_or_self [[[
+# Offer a generator's candidates plus zinit itself.
+#
+# $1 - description for the generator's half
+# $2 - the generator function
+__zinit_or_self(){
+  _alternative "plugins:$1:$2" 'zinit:zinit itself:__zinit_self'
+} # ]]]
 
 # FUNCTION: _zinit_add_fpath [[[
 _zinit_add_fpath(){
@@ -142,7 +258,7 @@ _zinit_cdclear(){
 } # ]]]
 # FUNCTION: _zinit_cdisable [[[
 _zinit_cdisable(){
-  _message 'Press enter to disable completions' && ret=0
+  _arguments '1:enabled completion:__zinit_completions_enabled'
 } # ]]]
 # FUNCTION: _zinit_cdlist [[[
 _zinit_cdlist(){
@@ -157,7 +273,7 @@ _zinit_cdreplay(){
 } # ]]]
 # FUNCTION: _zinit_cenable [[[
 _zinit_cenable(){
-  _message 'Hit enter to enable completions' && ret=0
+  _arguments '1:disabled completion:__zinit_completions_disabled'
 } # ]]]
 # FUNCTION: _zinit_changes [[[
 _zinit_changes(){
@@ -175,7 +291,7 @@ _zinit_compinit(){
 _zinit_completions(){
   _message "Display a list of completions" && ret=0
 } # ]]]
-# FUNCTION: _zinit_create [[[
+# FUNCTION: _zinit_compile [[[
 _zinit_compile(){
   _arguments \
     '(-h --help)'{-h,--help}'[Show this help message]' \
@@ -192,15 +308,15 @@ _zinit_create(){
 } # ]]]
 # FUNCTION: _zinit_creinstall [[[
 _zinit_creinstall(){
-  _arguments - plugin '1::plugin:__zinit_installed_plugins' && ret=0
+  _arguments '1::plugin: __zinit_or_self plugin __zinit_installed_plugins'
 } # ]]]
 # FUNCTION: _zinit_csearch [[[
 _zinit_csearch(){
   ret=0
 } # ]]]
-# FUNCTION: _zinit_cunistall [[[
-_zinit_cunistall(){
-  _arguments - installed '*::installed:__zinit_installed' && ret=0
+# FUNCTION: _zinit_cuninstall [[[
+_zinit_cuninstall(){
+  _arguments '1:plugin or snippet: __zinit_or_self "plugin or snippet" __zinit_objects_with_completions'
 } # ]]]
 # FUNCTION: _zinit_delete [[[
 _zinit_delete(){
@@ -236,14 +352,6 @@ _zinit_env_whitelist(){
 _zinit_glance(){
   _arguments - installed '1:installed:__zinit_installed' && ret=0
 } # ]]]
-# FUNCTION: _zinit_list [[[
-_zinit_list(){
-  _message 'Hit enter to list the defined key bindings replay' && ret=0
-} # ]]]
-# FUNCTION: _zinit_loaded [[[
-_zinit_loaded(){
-  _message 'Hit enter to list the defined key bindings replay' && ret=0
-} # ]]]
 # FUNCTION: _zinit_man [[[
 _zinit_man(){
   _message "Hit enter to view the Zinit man page" && ret=0
@@ -262,8 +370,12 @@ _zinit_recently(){
   ret=0
 } # ]]]
 # FUNCTION: _zinit_report [[[
+# `--all' is compared literally against $2 (zinit.zsh:3092) - there is no `-a'
+# short form, and no -q/-Q.
 _zinit_report(){
-  _message 'Hit enter to list the defined key bindings replay' && ret=0
+  _arguments \
+    '(1)--all[Show reports for every plugin loaded in this session]' \
+    '(--all)1:loaded plugin: __zinit_or_self "loaded plugin" __zinit_registered_plugins'
 } # ]]]
 # FUNCTION: _zinit_run [[[
 _zinit_run(){
