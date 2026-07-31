@@ -536,18 +536,21 @@ ZINIT[EXTENDED_GLOB]=""
 } # ]]]
 # FUNCTION: .zinit-find-completions-of-plugin [[[
 # Searches for completions owned by given plugin.
-# Returns them in `reply' array.
+# Returns them in `reply', and their install names in `reply3'.
 #
 # $1 - plugin spec (4 formats: user---plugin, user/plugin, user, plugin)
 # $2 - plugin (only when $1 - i.e. user - given)
 .zinit-find-completions-of-plugin() {
     builtin setopt localoptions nullglob extendedglob nokshglob noksharrays
-    .zinit-any-to-user-plugin "$1" "$2"
-    local user="${reply[-2]}" plugin="${reply[-1]}" uspl
-    [[ "$user" = "%" ]] && uspl="${user}${plugin}" || uspl="${reply[-2]}${reply[-2]:+---}${reply[-1]//\//---}"
+    # .zinit-get-path resolves snippets, plugins and the `%'/local-directory form
+    # alike - the same helper .zinit-uninstall-completions uses. Hand-building
+    # ${ZINIT[PLUGINS_DIR]}/%$plugin, as this used to, produced a path that can
+    # never exist, so a report on a `%' id always claimed zero completions.
+    .zinit-get-path "$1" "$2"
+    [[ -e $REPLY ]] || { reply=( ) reply2=( ) reply3=( ); return 1 }
 
     # No `validate' - a report must show what is actually on disk.
-    .zinit-find-completion-candidates "${ZINIT[PLUGINS_DIR]}/$uspl"
+    .zinit-find-completion-candidates "$REPLY"
 } # ]]]
 # FUNCTION: .zinit-check-comp-consistency [[[
 # Zinit creates symlink for each installed completion.
@@ -556,8 +559,8 @@ ZINIT[EXTENDED_GLOB]=""
 # is a completion that is disabled - has the leading "_"
 # removed.
 #
-# $1 - path to completion within plugin's directory
-# $2 - path to backup file within plugin's directory
+# $1 - path to the completion in ${ZINIT[COMPLETIONS_DIR]} (`…/_mkdir')
+# $2 - path to its backup file in ${ZINIT[COMPLETIONS_DIR]} (`…/mkdir')
 .zinit-check-comp-consistency() {
     local cfile="$1" bkpfile="$2"
     integer error="$3"
@@ -578,12 +581,13 @@ ZINIT[EXTENDED_GLOB]=""
     (( error )) && builtin print "${ZINIT[col-error]}Manual edit of ${ZINIT[COMPLETIONS_DIR]} occured?${ZINIT[col-rst]}"
 } # ]]]
 # FUNCTION: .zinit-check-which-completions-are-installed [[[
-# For each argument that each should be a path to completion
-# within a plugin's dir, it checks whether that completion
-# is installed - returns 0 or 1 on corresponding positions
-# in reply.
+# For each argument, which should be a completion's INSTALL name (`_fname', i.e.
+# ${reply3[…]} from .zinit-find-completion-candidates - not necessarily the
+# basename of the file in the plugin), it checks whether that completion is
+# installed - returns 0 or 1 on corresponding positions in reply.
 #
-# $1, ... - path to completion within plugin's directory
+# $1, ... - install name of a completion (a bare path is accepted too; only its
+#           :t is used)
 .zinit-check-which-completions-are-installed() {
     local i cfile bkpfile
     reply=( )
@@ -599,15 +603,15 @@ ZINIT[EXTENDED_GLOB]=""
     done
 } # ]]]
 # FUNCTION: .zinit-check-which-completions-are-enabled [[[
-# For each argument that each should be a path to completion
-# within a plugin's dir, it checks whether that completion
-# is disabled - returns 0 or 1 on corresponding positions
-# in reply.
+# For each argument, which should be a completion's INSTALL name (see
+# .zinit-check-which-completions-are-installed), it checks whether that
+# completion is disabled - returns 0 or 1 on corresponding positions in reply.
 #
 # Uninstalled completions will be reported as "0"
 # - i.e. disabled
 #
-# $1, ... - path to completion within plugin's directory
+# $1, ... - install name of a completion (a bare path is accepted too; only its
+#           :t is used)
 .zinit-check-which-completions-are-enabled() {
     local i cfile
     reply=( )
@@ -631,21 +635,18 @@ ZINIT[EXTENDED_GLOB]=""
     builtin emulate -LR zsh ${=${options[xtrace]:#off}:+-o xtrace}
     builtin setopt nullglob extendedglob warncreateglobal typesetsilent noshortloops
 
-    typeset -a completions symlinked backup_comps
-    local c cfile bkpfile
+    typeset -a names symlinked backup_comps
+    local cfile bkpfile
     integer action global_action=0
 
-    .zinit-get-path "$1" "$2"
-    [[ -e $REPLY ]] && {
-        # No `validate' - uninstall must always be a superset of install, so
-        # that a symlink created by an older, laxer `creinstall' can still be
-        # removed instead of being orphaned in ${ZINIT[COMPLETIONS_DIR]}.
-        .zinit-find-completion-candidates "$REPLY"
-        completions=( "${reply[@]}" )
-    } || {
+    # Deliberately the same unvalidated scan `report' uses: uninstall must be a
+    # superset of install, so a symlink created by an older, laxer `creinstall'
+    # is still removed rather than orphaned in ${ZINIT[COMPLETIONS_DIR]}.
+    .zinit-find-completions-of-plugin "$1" "$2" || {
         builtin print "No completions found for \`$1${${1:#(%|/)*}:+${2:+/}}$2'"
         return 1
     }
+    names=( "${reply3[@]}" )
 
     symlinked=( ${ZINIT[COMPLETIONS_DIR]}/_[^_.]*~*.zwc )
     backup_comps=( ${ZINIT[COMPLETIONS_DIR]}/[^_.]*~*.zwc )
@@ -653,10 +654,11 @@ ZINIT[EXTENDED_GLOB]=""
     (( ${+functions[.zinit-forget-completion]} )) || builtin source ${ZINIT[BIN_DIR]}"/zinit-install.zsh"
 
     # Delete completions if they are really there, either
-    # as completions (_fname) or backups (fname)
-    for c in ${completions[@]}; do
+    # as completions (_fname) or backups (fname). Keyed on the install name, so
+    # that a completion installed under a name derived from its `#compdef' line
+    # is removed rather than orphaned in ${ZINIT[COMPLETIONS_DIR]}.
+    for cfile in $names; do
         action=0
-        cfile=${c:t}
         bkpfile=${cfile#_}
 
         # Remove symlink to completion
@@ -1915,56 +1917,50 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
     typeset -a plugin_paths
     plugin_paths=( "${ZINIT[PLUGINS_DIR]}"/*(DN) )
 
-    # Find longest plugin name. Things are ran twice here, first pass
-    # is to get longest name of plugin which is having any completions
+    # One scan per plugin, not two: the tree walk is by far the dominant cost
+    # here, and the first pass used to throw its results away just to measure
+    # the longest name for column padding. `owned' keeps the INSTALL names, so
+    # both the listing and the installed-test below agree with what
+    # `creinstall' actually put in ${ZINIT[COMPLETIONS_DIR]}, even when the
+    # plugin ships the file under some other name.
     integer longest=0
-    typeset -a completions
     local pp
+    typeset -A owned
     for pp in "${plugin_paths[@]}"; do
         .zinit-find-completion-candidates "$pp"
-        completions=( "${reply[@]}" )
-        if [[ "${#completions[@]}" -gt 0 ]]; then
-            local pd="${pp:t}"
-            [[ "${#pd}" -gt "$longest" ]] && longest="${#pd}"
-        fi
+        (( $#reply )) || continue
+        owned[$pp]="${(j: :)reply3}"
+        [[ "${#${pp:t}}" -gt "$longest" ]] && longest="${#${pp:t}}"
     done
 
     builtin print "${ZINIT[col-info]}[+]${ZINIT[col-rst]} is installed, ${ZINIT[col-p]}[-]${ZINIT[col-rst]} uninstalled, ${ZINIT[col-error]}[+-]${ZINIT[col-rst]} partially installed"
 
-    local c
+    typeset -a completions
     for pp in "${plugin_paths[@]}"; do
-        .zinit-find-completion-candidates "$pp"
-        completions=( "${reply[@]}" )
+        (( ${+owned[$pp]} )) || continue
+        completions=( ${=owned[$pp]} )
 
-        if [[ "${#completions[@]}" -gt 0 ]]; then
-            # Array of completions, e.g. ( _cp _xauth )
-            completions=( "${completions[@]:t}" )
+        # Detect if the completions are installed. `reply' comes back as one
+        # "1"/"0" per name, so the not-installed count is the number of zeroes.
+        .zinit-check-which-completions-are-installed "${completions[@]}"
+        integer all_installed=${#${(M)reply:#0}}
 
-            # Detect if the completions are installed
-            integer all_installed="${#completions[@]}"
-            for c in "${completions[@]}"; do
-                if [[ -e "${ZINIT[COMPLETIONS_DIR]}/$c" || -e "${ZINIT[COMPLETIONS_DIR]}/${c#_}" ]]; then
-                    (( all_installed -- ))
-                fi
-            done
-
-            if [[ "$all_installed" -eq "${#completions[@]}" ]]; then
-                builtin print -n "${ZINIT[col-p]}[-]${ZINIT[col-rst]} "
-            elif [[ "$all_installed" -eq "0" ]]; then
-                builtin print -n "${ZINIT[col-info]}[+]${ZINIT[col-rst]} "
-            else
-                builtin print -n "${ZINIT[col-error]}[+-]${ZINIT[col-rst]} "
-            fi
-
-            # Convert directory name to colorified $user/$plugin
-            .zinit-any-colorify-as-uspl2 "${pp:t}"
-
-            # Adjust for escape code (nasty, utilizes fact that
-            # ${ZINIT[col-rst]} is used twice, so as a $ZINIT_COL)
-            integer adjust_ec=$(( ${#ZINIT[col-rst]} * 2 + ${#ZINIT[col-uname]} + ${#ZINIT[col-pname]} ))
-
-            builtin print "${(r:longest+adjust_ec:: :)REPLY} ${(j:, :)completions}"
+        if [[ "$all_installed" -eq "${#completions[@]}" ]]; then
+            builtin print -n "${ZINIT[col-p]}[-]${ZINIT[col-rst]} "
+        elif [[ "$all_installed" -eq "0" ]]; then
+            builtin print -n "${ZINIT[col-info]}[+]${ZINIT[col-rst]} "
+        else
+            builtin print -n "${ZINIT[col-error]}[+-]${ZINIT[col-rst]} "
         fi
+
+        # Convert directory name to colorified $user/$plugin
+        .zinit-any-colorify-as-uspl2 "${pp:t}"
+
+        # Adjust for escape code (nasty, utilizes fact that
+        # ${ZINIT[col-rst]} is used twice, so as a $ZINIT_COL)
+        integer adjust_ec=$(( ${#ZINIT[col-rst]} * 2 + ${#ZINIT[col-uname]} + ${#ZINIT[col-pname]} ))
+
+        builtin print "${(r:longest+adjust_ec:: :)REPLY} ${(j:, :)completions}"
     done
 } # ]]]
 
@@ -2231,22 +2227,25 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
 
     # Print what completions plugin has
     .zinit-find-completions-of-plugin "$user" "$plugin"
-    typeset -a completions
-    completions=( "${reply[@]}" )
+    # The install names: what `cenable'/`cdisable' take and what the symlinks in
+    # ${ZINIT[COMPLETIONS_DIR]} are called - not necessarily the basenames on
+    # disk, so nothing here needs $reply itself.
+    typeset -a names
+    names=( "${reply3[@]}" )
 
-    if [[ "${#completions[@]}" -ge "1" ]]; then
+    if [[ "${#names[@]}" -ge "1" ]]; then
         builtin print "${ZINIT[col-p]}Completions:${ZINIT[col-rst]}"
-        .zinit-check-which-completions-are-installed "${completions[@]}"
+        .zinit-check-which-completions-are-installed "${names[@]}"
         typeset -a installed
         installed=( "${reply[@]}" )
 
-        .zinit-check-which-completions-are-enabled "${completions[@]}"
+        .zinit-check-which-completions-are-enabled "${names[@]}"
         typeset -a enabled
         enabled=( "${reply[@]}" )
 
-        integer count="${#completions[@]}" idx
+        integer count="${#names[@]}" idx
         for (( idx=1; idx <= count; idx ++ )); do
-            builtin print -n "${completions[idx]:t}"
+            builtin print -n "${names[idx]}"
             if [[ "${installed[idx]}" != "1" ]]; then
                 builtin print -n " ${ZINIT[col-uninst]}[not installed]${ZINIT[col-rst]}"
             else

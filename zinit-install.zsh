@@ -547,8 +547,10 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
 
     local id_as=$1${2:+${${${(M)1:#%}:+$2}:-/$2}}
     local reinstall=${3:-0} quiet=${${4:+1}:-0}
+
     (( OPTS[opt_-q,--quiet] )) && quiet=1
     [[ $4 = -Q ]] && quiet=2
+
     typeset -ga INSTALLED_COMPS SKIPPED_COMPS
     INSTALLED_COMPS=() SKIPPED_COMPS=()
 
@@ -561,8 +563,9 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
     .zinit-exists-physically-message "$id_as" "" || return 1
 
     # Symlink any completion files included in the plugin directory
-    typeset -a completions already_symlinked backup_comps
+    typeset -a completions names already_symlinked backup_comps
     local c cfile bkpfile ctarget
+    integer idx
     # An explicit as'completion' or `completions' ice means the user declared
     # these files completions, so don't second-guess their contents.
     local validate=validate
@@ -575,6 +578,9 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
         .zinit-find-completion-candidates "${ZINIT[PLUGINS_DIR]}/${id_as//\//---}" $validate
     fi
     completions=( "${reply[@]}" )
+    # $names[idx] is the name $completions[idx] installs under - identical to its
+    # basename for a `_foo' file, derived from the `#compdef' line otherwise.
+    names=( "${reply3[@]}" )
 
     # Deliberately not gated on `quiet': the clone path forces quiet=1 (see
     # .zinit-setup-plugin-dir), and a completion silently vanishing is the worst
@@ -591,14 +597,21 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
     # Symlink completions if they are not already there
     # either as completions (_fname) or as backups (fname)
     # OR - if its a reinstall
-    # $c keeps the name as the plugin ships it, so that a completion shipped as
-    # a symlink (e.g. `ln -s foo.zsh-completion _foo') is installed under `_foo'
-    # rather than under its target's basename; $ctarget is the resolved path the
+    # $cfile is the install name, so that a completion shipped as a symlink (e.g.
+    # `ln -s foo.zsh-completion _foo') is installed under `_foo' rather than under
+    # its target's basename, and one shipped as `foo.plugin.zsh' with a `#compdef
+    # foo' line is installed under `_foo'; $ctarget is the resolved path the
     # symlink in the completions directory points at.
-    for c in "${completions[@]}"; do
+    for (( idx = 1; idx <= $#completions; idx ++ )); do
+        c="${completions[idx]}"
         ctarget="${c:A}"
-        cfile="${c:t}"
+        cfile="${names[idx]}"
         bkpfile="${cfile#_}"
+        # Same rationale as the warning above: not gated on `quiet', because the
+        # file the user sees in the plugin is not the name they must `cdisable'.
+        [[ $cfile != ${c:t} ]] && (( quiet < 2 )) && \
+            +zi-log "{m} Installing {obj}${c:t}{rst} as {file}$cfile{rst}," \
+                "the name its {file}#compdef{rst} line asks for"
         if [[ ( -z ${already_symlinked[(r)*/$cfile]} || $reinstall = 1 ) &&
               -z ${backup_comps[(r)*/$bkpfile]}
         ]]; then

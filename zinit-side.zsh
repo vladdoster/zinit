@@ -266,11 +266,27 @@
   return 0
 } # ]]]
 # FUNCTION: .zinit-find-completion-candidates [[[
-# Scans a directory tree for files that look like Zsh completion functions, i.e.
-# `_name' files. This is THE single place where the detection rules live; every
-# other site calls this instead of open-coding a glob, so that `creinstall',
-# `cuninstall', `report', `csearch' and `zstatus' can never disagree with each
-# other.
+# Scans a directory tree for files that Zsh's completion system would accept as
+# completion functions. This is THE single place where BOTH halves of the
+# decision live - *whether* a file is a completion, and *under what name* it is
+# installed into ${ZINIT[COMPLETIONS_DIR]}; every other site calls this instead
+# of open-coding a glob, so that `creinstall', `cuninstall', `report', `csearch'
+# and `zstatus' can never disagree with each other.
+#
+# Two kinds of file qualify:
+#
+#   _name       a conventionally named completion; installed as `_name'. Under
+#               `validate' its first line must be `#compdef' or `#autoload' (see
+#               ZINIT[COMPLETIONS_STRICT]).
+#
+#   name.zsh    a completion shipped under a name `compinit' would never pick up
+#   name.compdef  on its own, e.g. `pnpm-shell-completion.plugin.zsh' or
+#   name-completion  `hub.zsh_completion'. It qualifies only if its first line is
+#               `#compdef <cmd> …', and is installed as `_<cmd>' - the very name
+#               `compinit' would have bound it to. This arm is ALWAYS
+#               content-checked, `validate' or not: without the tag there is no
+#               name to derive. Switch it off with
+#               `zstyle :zinit:config completion-derive-names no'.
 #
 # Rejects, in order:
 #   - anything that is not a plain file after resolving symlinks - the (-.)
@@ -283,59 +299,101 @@
 #     the whole path.
 #   - anything under a directory named in ${ZINIT[COMPLETION_IGNORE_DIRS]},
 #     matched against the path RELATIVE to $1 (empty by default).
+#   - a derived name colliding with another candidate's: first match wins, and
+#     since the `_name' files are emitted first, a real `_foo' always beats a
+#     `foo.zsh' that merely says `#compdef foo'.
 #
 # $1 - directory to scan
-# $2 - the literal word `validate' to additionally read the first line of each
-#      candidate and classify it
+# $2 - the literal word `validate' to additionally content-check the `_name'
+#      files
 #
 # $reply  - the candidate completion files. Under `validate' with
-#           ZINIT[COMPLETIONS_STRICT] set, the untagged ones are removed.
-# $reply2 - candidates whose first line is not `#compdef'/`#autoload'. Always
-#           emptied; only ever filled when $2 = validate.
+#           ZINIT[COMPLETIONS_STRICT] set, the untagged `_name' ones are removed.
+# $reply2 - `_name' candidates whose first line is not `#compdef'/`#autoload'.
+#           Always emptied; only ever filled when $2 = validate. Files rejected
+#           by the second arm are NOT listed here - they are ordinary files that
+#           merely happened to match the glob, not completions gone wrong.
+# $reply3 - the install name of each $reply entry, at the same index.
 .zinit-find-completion-candidates() {
   builtin emulate -LR zsh ${=${options[xtrace]:#off}:+-o xtrace}
   builtin setopt extendedglob nullglob typesetsilent warncreateglobal noshortloops
 
-  typeset -ga reply reply2
-  local __dir=${1%/} __ign __c __rel __raw __first
-  local -a __w __ok __keep
+  typeset -ga reply reply2 reply3
+  local __dir=${1%/} __ign __pat __c __rel __raw __first __name
+  local -a __w __cands __keep __a __a_ok __b __b_names
+  integer __i __und
 
-  reply=( ) reply2=( )
+  reply=( ) reply2=( ) reply3=( )
   [[ -z $__dir ]] && return 0
 
   __ign=${ZINIT[COMPLETION_IGNORE]}${ZINIT[COMPLETION_IGNORE_EXTRA]:+\|${ZINIT[COMPLETION_IGNORE_EXTRA]}}
-  reply=( $__dir/**/_[^_.]*~*(${~__ign})(DN-.) )
+  # One tree walk for both arms - `**' over a plugin directory is the expensive
+  # part, and doing it twice would double it. The arms are told apart by the
+  # leading underscore in the loop below. `*[-_]completion' already covers
+  # `*.zsh-completion' and `*.zsh_completion'.
+  # No `D': a completion never lives in a dot-directory, and descending into
+  # them is 55% of this function's runtime (.git alone triples the entry count).
+  # It also keeps `._backup', where ziextract stashes displaced files, from
+  # resurrecting a stale completion. `~*/.git/*' is NOT an alternative - zsh
+  # applies `~' after the walk, so it prunes nothing.
+  __pat='_[^_.]*'
+  [[ ${ZINIT[COMPLETION_DERIVE_NAMES]} == (1|true|on|yes) ]] && \
+    __pat+='|*.zsh|*[-_]completion|*.compdef'
+  __cands=( $__dir/**/(${~__pat})~*(${~__ign})(N-.) )
 
   # Anchored directory-name filter. The path is stripped by index rather than
   # with ${__c#$__dir}, because the latter would treat $__dir as a pattern.
   if [[ -n ${ZINIT[COMPLETION_IGNORE_DIRS]} ]]; then
-    for __c in $reply; do
+    for __c in $__cands; do
       __rel=${__c[${#__dir}+2,-1]}
       [[ /$__rel == */(${~ZINIT[COMPLETION_IGNORE_DIRS]})/* ]] && continue
       __keep+=( $__c )
     done
-    reply=( $__keep )
+    __cands=( $__keep )
   fi
-
-  [[ $2 != validate ]] && return 0
 
   # Mirrors what compinit itself does when it walks $fpath: split the first line
   # on space/tab and look at word one. `read -k 64' bounds the read, so a
   # multi-megabyte single-line file cannot be slurped; it also copes with an
   # empty file, a missing trailing newline, embedded NULs, and an unreadable or
-  # vanished file (non-zero return, $__raw stays empty).
-  for __c in $reply; do
+  # vanished file (non-zero return, $__raw stays empty). It is a builtin read -
+  # never `head' - because this runs once per candidate file.
+  for __c in $__cands; do
+    __und=0
+    [[ ${__c:t} == _* ]] && { __und=1; __a+=( $__c ) }
+    (( __und )) && [[ $2 != validate ]] && continue
+
     __raw=
     { read -r -k 64 -u 0 __raw } < $__c 2>/dev/null
     __first=${__raw%%$'\n'*}
     __w=( ${${(s: :)${${__first//$'\t'/ }##[[:blank:]]#}}:#} )
-    if [[ ${__w[1]} == (\#compdef|\#autoload) ]]; then
-      __ok+=( $__c )
-    else
-      reply2+=( $__c )
+
+    if (( __und )); then
+      if [[ ${__w[1]} == (\#compdef|\#autoload) ]]; then
+        __a_ok+=( $__c )
+      else
+        reply2+=( $__c )
+      fi
+    elif [[ ${__w[1]} == \#compdef ]]; then
+      # `#compdef -p <pattern>' and the -P/-k/-K/-N/-a forms name no single
+      # command, so there is nothing to derive a filename from.
+      __name=${__w[2]}
+      [[ -z $__name || $__name == -* || $__name == *[][/=*?]* ]] && continue
+      # Only the first command word: `#compdef gcc g++ cc' installs as `_gcc',
+      # and compinit binds the rest itself by re-reading the very same line.
+      __b+=( $__c ) __b_names+=( _$__name )
     fi
   done
-  [[ ${ZINIT[COMPLETIONS_STRICT]} == (1|true|on|yes) ]] && reply=( $__ok )
+
+  [[ $2 = validate && ${ZINIT[COMPLETIONS_STRICT]} == (1|true|on|yes) ]] && __a=( $__a_ok )
+
+  # reply3 is the install name of reply at the same index; for the `_name' arm
+  # that is just the basename, so it is derived rather than carried.
+  reply=( $__a ) reply3=( ${__a[@]:t} )
+  for (( __i = 1; __i <= $#__b; __i ++ )); do
+    (( ${reply3[(Ie)${__b_names[__i]}]} )) && continue
+    reply+=( ${__b[__i]} ) reply3+=( ${__b_names[__i]} )
+  done
 
   return 0
 } # ]]]

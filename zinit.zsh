@@ -45,6 +45,7 @@ if zmodload -F zsh/zutil +b:zstyle 2>/dev/null || (( ${+builtins[zstyle]} )); th
             completion-ignore       COMPLETION_IGNORE
             completion-ignore-extra COMPLETION_IGNORE_EXTRA
             completion-ignore-dirs  COMPLETION_IGNORE_DIRS
+            completion-derive-names COMPLETION_DERIVE_NAMES
             completions-strict      COMPLETIONS_STRICT
         )
         for _attr _key in "${(kv)_map[@]}"; do
@@ -122,6 +123,12 @@ fi
 # Skip completion files that carry no `#compdef'/`#autoload' first line, i.e. the
 # directive that `compinit' itself looks for.
 : ${ZINIT[COMPLETIONS_STRICT]:=yes}
+# Also treat a file NOT named `_something' as a completion when its first line is
+# `#compdef <cmd>', installing it as `_<cmd>'. This is what lets a plugin that
+# ships e.g. `pnpm-shell-completion.plugin.zsh' or `hub.zsh_completion' work
+# without a `mv''' ice renaming it on disk (which would dirty the plugin's Git
+# worktree and fight the next `git pull').
+: ${ZINIT[COMPLETION_DERIVE_NAMES]:=yes}
 
 ZINIT[ice-list]="\
 \!bash|\!csh|\!ksh|\!sh|\
