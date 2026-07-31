@@ -6,8 +6,12 @@ DOC_SRC := $(foreach wrd,$(SRC),../$(wrd))
 
 .PHONY: all clean container doc doc/container tags tags/emacs tags/vim test zwc
 
+# tests/_support/tmp.* : the zunit bootstrap creates one temp tree per run (a
+# clone of the repo plus everything the tests download) and has no teardown, so
+# they accumulate at a few hundred MB apiece.
 clean:
 	rm -rf *.zwc doc/zsdoc/zinit{'','-additional','-autoload','-install','-side'}.zsh.adoc doc/zsdoc/data/
+	rm -rf tests/_support/tmp.*
 
 container:
 	docker build --tag=ghcr.io/zdharma-continuum/zinit:latest --file=docker/Dockerfile .
