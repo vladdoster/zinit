@@ -8,6 +8,10 @@ on:
       - v[0-9]+.[0-9]+.[0-9]+
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   build-containers-with-zsh:
     name: "build-containers-with-zsh (${{ matrix.zsh_version }}, ${{ matrix.arch }})"
