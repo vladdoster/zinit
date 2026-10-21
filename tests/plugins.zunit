@@ -82,11 +82,7 @@
 #   run zinit delete --yes neovim/neovim; assert $state equals 0
 # }
 @test 'tmux' {
-  if [[ $OSTYPE =~ 'darwin*' ]]; then
-    run zinit configure'--disable-utf8proc' make for @tmux/tmux; assert $state equals 0
-  else
-    run zinit build for @tmux/tmux; assert $state equals 0
-  fi
+  run zinit build for @tmux/tmux; assert $state equals 0
   local tmux="$ZBIN/tmux"; assert $tmux is_executable
   run "$tmux" -V; assert $state equals 0
   run zinit delete --yes tmux/tmux; assert $state equals 0
