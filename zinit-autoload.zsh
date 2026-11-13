@@ -2999,8 +2999,7 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
             local PUFILEMAIN=${${id_as#/}//(#m)[\/=\?\&:]/${map[$MATCH]}}
             local PUFILE=$PUDIR/${counter}_$PUFILEMAIN.out
 
-            .zinit-any-colorify-as-uspl2 "$uspl"
-            +zi-log "Updating $REPLY{…}" >! $PUFILE
+            +zi-log "{i} Updating {happy}$id_as{rst}" >! $PUFILE
 
             .zinit-any-to-user-plugin "$uspl"
             local user=${reply[-2]} plugin=${reply[-1]}
@@ -3053,10 +3052,8 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
 
     if (( was_snippet )) {
         .zinit-exists-physically "$user" "$plugin" || return $retval
-        .zinit-any-colorify-as-uspl2 "$2" "$3"
         (( !OPTS[opt_-q,--quiet] )) && \
-            +zi-log "{msg2}Updating also \`$REPLY{rst}{msg2}'" \
-                "plugin (already updated a snippet of the same name){…}{rst}"
+            +zi-log "{i} Updating {happy}$id_as{rst} (plugin with the same name as a snippet)"
     } else {
         .zinit-exists-physically-message "$user" "$plugin" || return 1
     }
@@ -3065,6 +3062,9 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
         ( builtin cd -q ${ZINIT[PLUGINS_DIR]}/${user:+${user}---}${plugin//\//---}; command git status; )
         return $retval
     fi
+
+    (( !was_snippet && !OPTS[opt_-q,--quiet] && !PUPDATE )) && \
+        +zi-log "{i} Updating {happy}$id_as{rst}"
 
     command rm -f ${TMPDIR:-${TMPDIR:-/tmp}}/zinit-execs.$$.lst ${TMPDIR:-${TMPDIR:-/tmp}}/zinit.installed_comps.$$.lst \
                     ${TMPDIR:-${TMPDIR:-/tmp}}/zinit.skipped_comps.$$.lst ${TMPDIR:-${TMPDIR:-/tmp}}/zinit.compiled.$$.lst
@@ -3103,9 +3103,8 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
         config=( ${(f)"$(<$local_dir/.git/config)"} )
         if [[ ${#${(M)config[@]:#\[remote[[:blank:]]*\]}} -eq 0 ]]; then
             (( !OPTS[opt_-q,--quiet] )) && {
-                .zinit-any-colorify-as-uspl2 "$id_as"
-                [[ $id_as = _local/* ]] && builtin print -r -- "Skipping local plugin $REPLY" || \
-                    builtin print -r -- "$REPLY doesn't have a remote set, will not fetch"
+                [[ $id_as = _local/* ]] && +zi-log "{m} Skipping local plugin {happy}$id_as{rst}" || \
+                    +zi-log "{w} $id_as has no remote, skipping"
             }
             return 1
         fi
@@ -3152,18 +3151,17 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
                 }
             }
             if (( ZINIT[annex-multi-flag:pull-active] <= 1 && !OPTS[opt_-q,--quiet] )) {
-                +zi-log "{info}[{pre}${ice[from]}{info}]{rst} latest version ({version}${version}{rst}) already installed"
+                builtin print -r -- "  already up to date${version:+ ($version)}"
             }
         }
 
         if (( 1 )) {
             if (( ZINIT[annex-multi-flag:pull-active] >= 1 )) {
                 if (( OPTS[opt_-q,--quiet] && !PUPDATE )) {
-                    .zinit-any-colorify-as-uspl2 "$id_as"
                     (( ZINIT[first-plugin-mark] )) && {
                         ZINIT[first-plugin-mark]=0
                     } || builtin print
-                    builtin print "\rUpdating $REPLY"
+                    +zi-log $'\r'"{i} Updating {happy}$id_as{rst}"
                 }
 
                 ICE=( "${(kv)ice[@]}" )
@@ -3181,7 +3179,7 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
                     [[ "$hook_rc" -ne 0 ]] && {
                         # note: this will effectively return the last != 0 rc
                         retval="$hook_rc"
-                        builtin print -Pr -- "${ZINIT[col-warn]}Warning:%f%b ${ZINIT[col-obj]}${arr[5]}${ZINIT[col-warn]} hook returned with ${ZINIT[col-obj]}${hook_rc}${ZINIT[col-rst]}"
+                        +zi-log "{w} {obj}${arr[5]}{rst} hook returned {obj}$hook_rc"
                     }
                 done
 
@@ -3189,9 +3187,6 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
                     if ! .zinit-setup-plugin-dir "$user" "$plugin" "$id_as" release -u $version; then
                         ZINIT[annex-multi-flag:pull-active]=0
                     fi
-                    if (( OPTS[opt_-q,--quiet] != 1 )) {
-                        builtin print
-                    }
                 }
                 ICE=()
             }
@@ -3214,12 +3209,12 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
                       [[ $had_output -eq 0 ]] && {
                           had_output=1
                           if (( OPTS[opt_-q,--quiet] && !PUPDATE )) {
-                              .zinit-any-colorify-as-uspl2 "$id_as"
                               (( ZINIT[first-plugin-mark] )) && {
                                   ZINIT[first-plugin-mark]=0
                               } || builtin print
-                              builtin print "Updating $REPLY"
+                              +zi-log "{i} Updating {happy}$id_as{rst}"
                           }
+                          builtin print -r -- "  $(command git rev-parse --short HEAD) -> $(command git rev-parse --short FETCH_HEAD)"
                       }
                       builtin print $line
                   }
@@ -3243,11 +3238,10 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
 
                       # Handle the snippet/plugin boundary in the messages
                       if (( OPTS[opt_-q,--quiet] && !PUPDATE )) {
-                          .zinit-any-colorify-as-uspl2 "$id_as"
                           (( ZINIT[first-plugin-mark] )) && {
                               ZINIT[first-plugin-mark]=0
                           } || builtin print
-                          builtin print "\rUpdating $REPLY"
+                          +zi-log $'\r'"{i} Updating {happy}$id_as{rst}"
                       }
                   } else {
                       ZINIT[annex-multi-flag:pull-active]=0
@@ -3270,11 +3264,11 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
                       [[ "$hook_rc" -ne 0 ]] && {
                           # note: this will effectively return the last != 0 rc
                           retval="$hook_rc"
-                          builtin print -Pr -- "${ZINIT[col-warn]}Warning:%f%b ${ZINIT[col-obj]}${arr[5]}${ZINIT[col-warn]} hook returned with ${ZINIT[col-obj]}${hook_rc}${ZINIT[col-rst]}"
+                          +zi-log "{w} {obj}${arr[5]}{rst} hook returned {obj}$hook_rc"
                       }
                   done
                   ICE=()
-                  (( ZINIT[annex-multi-flag:pull-active] >= 2 )) && command git pull --no-stat ${=ice[pullopts]:---ff-only} origin ${ice[ver]:-$main_branch} |& command grep -E -v '(FETCH_HEAD|up.to.date\.|From.*://)'
+                  (( ZINIT[annex-multi-flag:pull-active] >= 2 )) && command git pull --no-stat ${=ice[pullopts]:---ff-only} origin ${ice[ver]:-$main_branch} |& command grep -E -v '(FETCH_HEAD|up.to.date\.|From.*://|^Updating [0-9a-f]+\.\.[0-9a-f]+$|^Fast-forward$)'
               }
               return ${ZINIT[annex-multi-flag:pull-active]}
             )
@@ -3287,16 +3281,18 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
                 if (( OPTS[opt_-q,--quiet] )) {
                     command git pull --recurse-submodules ${=ice[pullopts]:---ff-only} origin ${ice[ver]:-$main_branch} &> /dev/null
                 } else {
-                    command git pull --recurse-submodules ${=ice[pullopts]:---ff-only} origin ${ice[ver]:-$main_branch} |& command grep -E -v '(FETCH_HEAD|up.to.date\.|From.*://)'
+                    command git pull --recurse-submodules ${=ice[pullopts]:---ff-only} origin ${ice[ver]:-$main_branch} |& command grep -E -v '(FETCH_HEAD|up.to.date\.|From.*://|^Updating [0-9a-f]+\.\.[0-9a-f]+$|^Fast-forward$)'
                 }
             )
+                (( ZINIT[annex-multi-flag:pull-active] <= 1 && !OPTS[opt_-q,--quiet] )) && \
+                    builtin print -r -- "  already up to date"
         fi
         if [[ -n ${(v)ice[(I)(mv|cp|atpull|ps-on-update|cargo)]} || $+ice[sbin]$+ice[make]$+ice[extract]$+ice[configure] -ne 0 ]] {
             if (( !OPTS[opt_-q,--quiet] && ZINIT[annex-multi-flag:pull-active] == 1 )) {
                 if (( ${+ice[run-atpull]} )); then
-                    +zi-log "{info}[{pre}update{info}]{rst} No new commits found, but running post-update hooks as requested by the {ice}run-atpull{apo}{rst} ice."
+                    +zi-log "{m} Running post-update hooks (run-atpull ice)"
                 else
-                    +zi-log "{info}[{pre}update{info}]{rst} No new commits found, but running post-update hooks as requested by the {opt}-u{rst}/{opt}--urge{rst} option."
+                    +zi-log "{m} Running post-update hooks (-u/--urge)"
                 fi
             }
         }
@@ -3318,7 +3314,7 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
                 [[ "$hook_rc" -ne 0 ]] && {
                     # note: this will effectively return the last != 0 rc
                     retval="$hook_rc"
-                    builtin print -Pr -- "${ZINIT[col-warn]}Warning:%f%b ${ZINIT[col-obj]}${arr[5]}${ZINIT[col-warn]} hook returned with ${ZINIT[col-obj]}${hook_rc}${ZINIT[col-rst]}"
+                    +zi-log "{w} {obj}${arr[5]}{rst} hook returned {obj}$hook_rc"
                 }
             done
 
@@ -3336,7 +3332,7 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
                 [[ "$hook_rc" -ne 0 ]] && {
                     # note: this will effectively return the last != 0 rc
                     retval="$hook_rc"
-                    builtin print -Pr -- "${ZINIT[col-warn]}Warning:%f%b ${ZINIT[col-obj]}${arr[5]}${ZINIT[col-warn]} hook returned with ${ZINIT[col-obj]}${hook_rc}${ZINIT[col-rst]}"
+                    +zi-log "{w} {obj}${arr[5]}{rst} hook returned {obj}$hook_rc"
                 }
             done
             ICE=()
@@ -3361,7 +3357,7 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
         [[ "$hook_rc" -ne 0 ]] && {
             # note: this will effectively return the last != 0 rc
             retval="$hook_rc"
-            builtin print -Pr -- "${ZINIT[col-warn]}Warning:%f%b ${ZINIT[col-obj]}${arr[5]}${ZINIT[col-warn]} hook returned with ${ZINIT[col-obj]}${hook_rc}${ZINIT[col-rst]}"
+            +zi-log "{w} {obj}${arr[5]}{rst} hook returned {obj}$hook_rc"
         }
     done
     ICE=()
@@ -3458,7 +3454,7 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
         snipps=( ${ZINIT[SNIPPETS_DIR]}/**/(._zinit|._zplugin)(ND) )
 
         [[ $st != status && ${OPTS[opt_-q,--quiet]} != 1 && -n $snipps ]] && \
-            +zi-log "{info}Note:{rst} updating also unloaded snippets"
+            +zi-log "{m} Updating all snippets, including unloaded ones"
 
         for snip ( ${ZINIT[SNIPPETS_DIR]}/**/(._zinit|._zplugin)/mode(D) ) {
             [[ ! -f ${snip:h}/url ]] && continue
@@ -3482,13 +3478,14 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
             +zi-log "{info}Note:{rst} status done also for unloaded plugins"
     else
         (( !OPTS[opt_-q,--quiet] )) && \
-            +zi-log "{info}Note:{rst} updating also unloaded plugins"
+            +zi-log "{m} Updating all plugins, including unloaded ones"
     fi
 
     ZINIT[first-plugin-mark]=init
 
     for repo in ${ZINIT[PLUGINS_DIR]}/*; do
         pd=${repo:t}
+        id_as=${pd//---//}
 
         # Two special cases
         [[ $pd = custom || $pd = _local---zinit ]] && continue
@@ -3502,8 +3499,8 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
             if [[ ${#${(M)config[@]:#\[remote[[:blank:]]*\]}} -eq 0 ]]; then
                 if (( !OPTS[opt_-q,--quiet] )) {
                     [[ $pd = _local---* ]] && \
-                        builtin print -- "\nSkipping local plugin $REPLY" || \
-                        builtin print "\n$REPLY doesn't have a remote set, will not fetch"
+                        +zi-log "{m} Skipping local plugin {happy}$id_as{rst}" || \
+                        +zi-log "{w} $id_as has no remote, skipping"
                 }
                 continue
             fi
@@ -3515,7 +3512,7 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
         # Must be a git repository or a binary release
         if [[ ! -d $repo/.git && ! -f $repo/._zinit/is_release ]]; then
             (( !OPTS[opt_-q,--quiet] )) && \
-                builtin print "$REPLY: not a git repository"
+                +zi-log "{w} $id_as is not a git repository or a release, skipping"
             continue
         fi
 
@@ -3523,7 +3520,7 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
             builtin print "\nStatus for plugin $REPLY"
             ( builtin cd -q "$repo"; command git status )
         else
-            (( !OPTS[opt_-q,--quiet] )) && builtin print "Updating $REPLY" || builtin print -n .
+            (( OPTS[opt_-q,--quiet] )) && builtin print -n .
             .zinit-update-or-status update "$user" "$plugin"
             update_rc=$?
             [[ $update_rc -ne 0 ]] && {

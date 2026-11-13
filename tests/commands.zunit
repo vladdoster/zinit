@@ -12,6 +12,31 @@
   typeset -gx HOME="$zi_test_dir"
   typeset -gx ZBIN="$zi_test_dir/polaris/bin"
   load "${PWD}/tests/_support/self_update_fixtures"
+
+  # Local fixtures for `zinit update`: a bare repo on branch `develop`, a work
+  # clone to push commits from, and a plugin dir cloned from the bare repo.
+  # Usage: upd_fixture <plugin-dir-name> [<remote-name>]
+  upd_fixture() {
+    local pdir=$1 name=${2:-$1}
+    local bare="$zi_test_dir/remotes/$name.git" work="$zi_test_dir/remotes/$name.work"
+    local -a g=( command git -c user.name=zunit -c user.email=zunit@localhost )
+    command mkdir -p "$zi_test_dir/remotes" "$ZINIT[PLUGINS_DIR]"
+    $g init --quiet --bare -b develop "$bare"
+    $g init --quiet -b develop "$work"
+    builtin print one >| "$work/$name.plugin.zsh"
+    $g -C "$work" add . && $g -C "$work" commit --quiet -m 'feat: first commit'
+    $g -C "$work" push --quiet "$bare" develop
+    $g clone --quiet "$bare" "$ZINIT[PLUGINS_DIR]/$pdir"
+    $g -C "$ZINIT[PLUGINS_DIR]/$pdir" remote set-head origin develop >/dev/null 2>&1
+  }
+  upd_push_commit() {
+    local name=$1 work="$zi_test_dir/remotes/$1.work"
+    local -a g=( command git -c user.name=zunit -c user.email=zunit@localhost )
+    builtin print two >> "$work/$name.plugin.zsh"
+    $g -C "$work" commit --quiet -am 'feat: second commit'
+    $g -C "$work" push --quiet "$zi_test_dir/remotes/$name.git" develop
+  }
+  strip_ansi() { builtin print -r -- "$1" | perl -pe 's/\x1b?\[[0-9;]*[mGK]//g; s/\r//g' }
 }
 
 @test 'help' {
@@ -139,4 +164,13 @@
   run +zi-log -n '{dbg} message'; assert $output contains ''
   run +zi-log -n '{m} message'
   assert $output contains 'message'; assert $state equals 0
+}
+
+@test 'update --all: up-to-date plugin prints "already up to date" after its header' {
+  upd_fixture tst---updsame updsame
+  run zinit update --all
+  local clean=$(strip_ansi "$output")
+  assert $state equals 0
+  assert $clean contains 'Updating tst/updsame'
+  assert $(print -r -- "$clean" | sed -n '/Updating tst\/updsame/,/^==>/p' | command grep -c 'already up to date') equals 1
 }
