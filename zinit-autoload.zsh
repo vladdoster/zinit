@@ -2926,9 +2926,9 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
 
     local id_as repo snip uspl user plugin PUDIR="$(mktemp -d)"
 
-    local -A PUAssocArray map
+    local -A PUAssocArray PUIdArray map
     map=( / --  "=" -EQ-  "?" -QM-  "&" -AMP-  : - )
-    local -a files
+    local -a files PUSkipFiles
     integer main_counter counter PUPDATE=1
 
     files=( ${ZINIT[SNIPPETS_DIR]}/**/(._zinit|._zplugin)/mode(ND) )
@@ -2951,43 +2951,20 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
 
             .zinit-update-or-status-snippet "$st" "$ef_id" &>! $PUFILE &
 
-            PUAssocArray[$!]=$PUFILE
+            PUAssocArray[$!]=$PUFILE PUIdArray[$!]=$ef_id
 
             .zinit-wait-for-update-jobs snippets
         }
     }
 
     counter=0
-    PUAssocArray=()
+    PUAssocArray=() PUIdArray=()
 
     if (( OPTS[opt_-l,--plugins] || !OPTS[opt_-s,--snippets] )) {
-        local -a files2
+        local -a files2 config
         files=( ${ZINIT[PLUGINS_DIR]}/*(ND/) )
-
-        # Pre-process plugins
-        for repo ( $files ) {
-            uspl=${repo:t}
-            # Two special cases
-            [[ $uspl = custom || $uspl = _local---zinit ]] && continue
-
-            # Check if repository has a remote set
-            if [[ -f $repo/.git/config ]] {
-                local -a config
-                config=( ${(f)"$(<$repo/.git/config)"} )
-                if [[ ${#${(M)config[@]:#\[remote[[:blank:]]*\]}} -eq 0 ]] {
-                    continue
-                }
-            }
-
-            .zinit-any-to-user-plugin "$uspl"
-            local user=${reply[-2]} plugin=${reply[-1]}
-
-            # Must be a git repository or a binary release
-            if [[ ! -d $repo/.git && ! -f $repo/._zinit/is_release ]] {
-                continue
-            }
-            files2+=( $repo )
-        }
+        # Two special cases
+        files2=( ${files:#*/(custom|_local---zinit)} )
 
         main_counter=${#files2}
         for repo ( "${files2[@]}" ) {
@@ -3000,6 +2977,27 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
             local PUFILEMAIN=${${id_as#/}//(#m)[\/=\?\&:]/${map[$MATCH]}}
             local PUFILE=$PUDIR/${counter}_$PUFILEMAIN.out
 
+            config=()
+            [[ -f $repo/.git/config ]] && config=( ${(f)"$(<$repo/.git/config)"} )
+            if [[ -f $repo/.git/config && ${#${(M)config[@]:#\[remote[[:blank:]]*\]}} -eq 0 ]] ||
+                [[ ! -d $repo/.git && ! -f $repo/._zinit/is_release ]]; then
+                # A skipped plugin gets an output file too, so its warning prints in plugin order.
+                if (( !OPTS[opt_-q,--quiet] )) {
+                    {
+                        if [[ -d $repo/.git && $uspl = _local---* ]] {
+                            +zi-log "{m} Skipping local plugin {happy}$id_as{rst}"
+                        } elif [[ -d $repo/.git ]] {
+                            +zi-log "{w} $id_as has no remote, skipping"
+                        } else {
+                            +zi-log "{w} $id_as is not a git repository or a release, skipping"
+                        }
+                    } >! $PUFILE
+                    PUSkipFiles+=( $PUFILE )
+                }
+                .zinit-wait-for-update-jobs plugins
+                continue
+            fi
+
             +zi-log "{i} Updating {happy}$id_as{rst}" >! $PUFILE
 
             .zinit-any-to-user-plugin "$uspl"
@@ -3007,7 +3005,7 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
 
             .zinit-update-or-status update "$user" "$plugin" &>>! $PUFILE &
 
-            PUAssocArray[$!]=$PUFILE
+            PUAssocArray[$!]=$PUFILE PUIdArray[$!]=$id_as
 
             .zinit-wait-for-update-jobs plugins
 
@@ -3426,9 +3424,6 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
     .zinit-self-update
     OPTS[opt_-q,--quiet]=$_saved_quiet
 
-    [[ $2 = restart ]] && \
-        +zi-log "{msg2}Restarting the update with the new codebase loaded.{rst}"$'\n'
-
     local file
     integer sum el update_rc
     for file ( "" -side -install -autoload ) {
@@ -3439,8 +3434,7 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
     if [[ $2 != restart ]] && (( ZINIT[mtime] + ZINIT[mtime-side] +
         ZINIT[mtime-install] + ZINIT[mtime-autoload] != sum
     )) {
-        +zi-log "{msg2}Detected Zinit update in another session -" \
-            "{pre}reloading Zinit{msg2}{…}{rst}"
+        +zi-log "{m} Reloading Zinit: its files changed in another session"
         source $ZINIT[BIN_DIR]/zinit.zsh
         source $ZINIT[BIN_DIR]/zinit-side.zsh
         source $ZINIT[BIN_DIR]/zinit-install.zsh
@@ -3448,7 +3442,6 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
         for file ( "" -side -install -autoload ) {
             .zinit-get-mtime-into "${ZINIT[BIN_DIR]}/zinit$file.zsh" "ZINIT[mtime$file]"
         }
-        +zi-log "%B{pname}Done.{rst}"$'\n'
         .zinit-update-or-status-all "$1" restart
         return $?
     }
@@ -3458,14 +3451,15 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
 
     if (( OPTS[opt_-p,--parallel] )) && [[ $1 = update ]] {
         (( !OPTS[opt_-q,--quiet] )) && \
-            +zi-log '{info2}Parallel Update Starts Now{…}{rst}'
+            +zi-log "{m} Updating all plugins in parallel, ${OPTS[value]} at a time"
+        # .zinit-wait-for-update-jobs counts the plugin jobs into these.
+        integer n_total
         .zinit-update-all-parallel
-        retval=$?
         .zinit-compinit 1 1 &>/dev/null
         rehash
-        if (( !OPTS[opt_-q,--quiet] )) {
-            +zi-log "{msg2}The update took {obj}${SECONDS}{msg2} seconds{rst}"
-        }
+        n_uptodate=$(( n_total - n_updated - $#failed_ids ))
+        (( $#failed_ids )) && retval=1
+        .zinit-update-summary
         return $retval
     }
 
@@ -3625,22 +3619,30 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
 .zinit-wait-for-update-jobs() {
     local tpe=$1
     if (( counter > OPTS[value] || main_counter == 0 )) {
+        local pid file
+        local -a outs
+        local -A rcs ids
         # A multi-pid wait stops at the first job that exits non-zero.
-        local pid ind_file
-        for pid ( ${(k)PUAssocArray} ) { wait $pid }
-        for ind_file ( ${^${(von)PUAssocArray}}.ind(DN.) ) {
-            command cat ${ind_file:r}
-            (( !OPTS[opt_-d,--debug] && !ZINIT[DEBUG_MODE] )) && \
-                command rm -f $ind_file
+        for pid ( ${(k)PUAssocArray} ) {
+            wait $pid
+            rcs[$PUAssocArray[$pid]]=$? ids[$PUAssocArray[$pid]]=$PUIdArray[$pid]
+        }
+        # Job files and skip-warning files, in plugin order.
+        outs=( ${(v)PUAssocArray} $PUSkipFiles )
+        # A job writes <file>.ind when it updated. Under -q, show only those and failed jobs.
+        for file ( ${(on)outs} ) {
+            [[ -f $file.ind ]] || (( ${rcs[$file]:-0} || !OPTS[opt_-q,--quiet] )) && command cat $file
+            (( ${rcs[$file]:-0} )) && retval=1
+            if [[ $tpe = plugins && -n ${ids[$file]} ]] {
+                n_total+=1
+                (( ${rcs[$file]} )) && failed_ids+=( $ids[$file] )
+                [[ -f $file.ind ]] && (( !${rcs[$file]} && $(<$file.ind) >= 2 )) && n_updated+=1
+            }
         }
         (( !OPTS[opt_-d,--debug] && !ZINIT[DEBUG_MODE] )) && \
-            command rm -f ${(v)PUAssocArray}
+            command rm -f $outs ${^${(v)PUAssocArray}}.ind(N)
         counter=0
-        PUAssocArray=()
-    } elif (( counter == 1 && !OPTS[opt_-q,--quiet] )) {
-        +zi-log "{obj}Spawning the next{num}" \
-            "${OPTS[value]}{obj} concurrent update jobs" \
-            "({msg2}${tpe}{obj}){…}{rst}"
+        PUAssocArray=() PUIdArray=() PUSkipFiles=()
     }
 } # ]]]
 
