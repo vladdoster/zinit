@@ -213,3 +213,29 @@
   assert $clean does_not_contain '(/lonelyupd'
   assert $clean does_not_contain ' /lonelyupd'
 }
+
+@test 'update: short-SHA ver pin stays on the pin, then moves to a newer pin' {
+  upd_fixture tst---updpin updpin
+  local pd=$ZINIT[PLUGINS_DIR]/tst---updpin
+  local -a g=( command git -c user.name=zunit -c user.email=zunit@localhost )
+  local old=$($g -C $pd rev-parse --short=7 HEAD)
+  upd_push_commit updpin
+  local new=$($g -C $zi_test_dir/remotes/updpin.work rev-parse --short=7 HEAD)
+  local full=$($g -C $zi_test_dir/remotes/updpin.work rev-parse HEAD)
+  $g -C $pd fetch --quiet origin
+  $g -C $pd checkout --quiet $old
+  command mkdir -p $pd/._zinit
+  builtin print -rn $old >| $pd/._zinit/ver
+  run zinit update tst/updpin
+  local clean=$(strip_ansi "$output")
+  assert $state equals 0
+  assert $clean contains 'already up to date'
+  assert $clean does_not_contain "couldn't find remote ref"
+  assert "$($g -C $pd rev-parse --short=7 HEAD)" same_as "$old"
+  builtin print -rn $new >| $pd/._zinit/ver
+  run zinit update tst/updpin
+  clean=$(strip_ansi "$output")
+  assert $state equals 0
+  assert $clean contains "$old -> $new"
+  assert "$($g -C $pd rev-parse HEAD)" same_as "$full"
+}
