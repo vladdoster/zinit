@@ -380,8 +380,11 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
                         { local old_version="$(<$local_path/._zinit/is_release${count:#1})"; } 2>/dev/null
                         old_version=${old_version/(#b)(\/[^\/]##)(#c4,4)\/([^\/]##)*/${match[2]}}
                     }
-                    [[ $count -eq 1 && -n $version && -n $old_version && $old_version != "$version" ]] && \
-                        builtin print -r -- "  $old_version -> $version"
+                    if [[ $count -eq 1 && -n $version && -n $old_version ]] {
+                        [[ $old_version != "$version" ]] && \
+                            builtin print -r -- "  $old_version -> $version" || \
+                            builtin print -r -- "  reinstalling $version"
+                    }
                     (( !OPTS[opt_-q,--quiet] )) && +zi-log "{m} Downloading {url}$url{rst}"
                     if { ! .zinit-download-file-stdout "$url" 0 $(( !OPTS[opt_-q,--quiet] )) >! "${REPLY:t}" } {
                         if { ! .zinit-download-file-stdout "$url" 1 $(( !OPTS[opt_-q,--quiet] )) >! "${REPLY:t}" } {
@@ -399,13 +402,16 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
 
                     command mkdir -p ._zinit && echo '*' > ._zinit/.gitignore
                     [[ -d ._zinit ]] || return 2
-                    builtin print -r -- $url >! ._zinit/url || return 3
-                    builtin print -r -- ${REPLY} >! ._zinit/is_release${count:#1} || return 4
+                    # ziextract overwrites REPLY.
+                    local release=$REPLY
                     # When extract ice is set, the ∞zinit-extract-hook will
                     # handle extraction; otherwise extract here (no move).
                     if (( !${+ICE[extract]} )); then
-                        ziextract ${REPLY:t} ${${${#reply}:#1}:+--nobkp}
+                        ziextract ${release:t} ${${${#reply}:#1}:+--nobkp} || return 5
                     fi
+                    # Record the version only after extraction, so an interrupted update retries.
+                    builtin print -r -- $url >! ._zinit/url || return 3
+                    builtin print -r -- $release >! ._zinit/is_release${count:#1} || return 4
                 }
                 return $?
             ) || {
@@ -2041,64 +2047,71 @@ zimv() {
         ( ${+ICE[reset]} && ZINIT[-r/--reset-opt-hook-has-been-run] == 1 )
     )) {
         if (( ZINIT[-r/--reset-opt-hook-has-been-run] )) {
-            local msg_bit="{meta}reset{msg2} ice given{pre}" option=
+            local msg_bit="reset ice" option=
         } else {
-            local msg_bit="{meta2}-r/--reset{msg2} given to \`{meta}update{pre}'" option=1
+            local msg_bit="--reset" option=1
         }
         if [[ $type == snippet ]] {
             if (( $+ICE[svn] )) {
                 if [[ $skip_pull -eq 0 && -d $filename/.svn ]] {
-                    (( !OPTS[opt_-q,--quiet] )) && +zi-log "{pre}reset ($msg_bit): {msg2}Resetting the repository ($msg_bit) with command: {rst}svn revert --recursive {…}/{file}$filename/.{rst} {…}"
+                    # Print paths and reset code raw. +zi-log treats {word} in them as a tag.
+                    (( !OPTS[opt_-q,--quiet] )) && {
+                        +zi-log -n "{m} Resetting with "
+                        builtin print -r -- "svn revert --recursive $filename/. ($msg_bit)"
+                    }
                     command svn revert --recursive $filename/.
                 }
             } else {
                 if (( ZINIT[annex-multi-flag:pull-active] >= 2 )) {
-                    if (( !OPTS[opt_-q,--quiet] )) {
-                        if [[ -f $local_dir/$dirname/$filename ]] {
+                    if [[ -f $local_dir/$dirname/$filename ]] {
+                        if (( !OPTS[opt_-q,--quiet] )) {
                             if [[ -n $option || -z $ICE[reset] ]] {
-                                +zi-log "{pre}reset ($msg_bit):{msg2} Removing the snippet-file: {file}$filename{msg2} {…}{rst}"
+                                +zi-log -n "{m} Resetting: removing "
+                                builtin print -r -- "$filename ($msg_bit)"
                             } else {
-                                +zi-log "{pre}reset ($msg_bit):{msg2} Removing the snippet-file: {file}$filename{msg2}," \
-                                    "with the supplied code: {data2}$ICE[reset]{msg2} {…}{rst}"
-                            }
-                            if (( option )) {
-                                command rm -f "$local_dir/$dirname/$filename"
-                            } else {
-                                eval "${ICE[reset]:-rm -f \"$local_dir/$dirname/$filename\"}"
-                            }
-                        } else {
-                            +zi-log "{pre}reset ($msg_bit):{msg2} The file {file}$filename{msg2} is already deleted {…}{rst}"
-                            if [[ -n $ICE[reset] && ! -n $option ]] {
-                                +zi-log "{pre}reset ($msg_bit):{msg2} (skipped running the provided reset-code:" \
-                                    "{data2}$ICE[reset]{msg2}){rst}"
+                                +zi-log -n "{m} Resetting with "
+                                builtin print -r -- "$ICE[reset] ($msg_bit)"
                             }
                         }
+                        if (( option )) {
+                            command rm -f "$local_dir/$dirname/$filename"
+                        } else {
+                            eval "${ICE[reset]:-rm -f \"$local_dir/$dirname/$filename\"}"
+                        }
+                    } elif (( !OPTS[opt_-q,--quiet] )) {
+                        builtin print -r -- "  reset skipped: $filename already deleted"
+                        if [[ -n $ICE[reset] && ! -n $option ]] {
+                            builtin print -r -- "  reset code not run: $ICE[reset]"
+                        }
                     }
-                } else {
+                } elif (( !OPTS[opt_-q,--quiet] )) {
                         [[ -f $local_dir/$dirname/$filename ]] && \
-                            +zi-log "{pre}reset ($msg_bit): {msg2}Skipping the removal of {file}$filename{msg2}" \
-                                 "as there is no new copy scheduled for download.{rst}" || \
-                            +zi-log "{pre}reset ($msg_bit): {msg2}The file {file}$filename{msg2} is already deleted" \
-                                "and {ehi}no new download is being scheduled.{rst}"
+                            builtin print -r -- "  reset skipped: no new copy to download" || \
+                            builtin print -r -- "  reset skipped: $filename already deleted"
                 }
             }
         } elif [[ $type == plugin ]] {
             if (( is_release && !skip_pull )) {
-                if (( option )) {
-                    (( !OPTS[opt_-q,--quiet] )) && +zi-log "{pre}reset ($msg_bit): {msg2}running: {rst}rm -rf ${${ZINIT[PLUGINS_DIR]:#[/[:space:]]##}:-${TMPDIR:-/tmp}/xyzabc312}/${${(M)${local_dir##${ZINIT[PLUGINS_DIR]}[/[:space:]]#}:#[^/]*}:-${TMPDIR:-/tmp}/xyzabc312-zinit-protection-triggered}/*"
-                    builtin eval command rm -rf ${${ZINIT[PLUGINS_DIR]:#[/[:space:]]##}:-${TMPDIR:-/tmp}/xyzabc312}/"${${(M)${local_dir##${ZINIT[PLUGINS_DIR]}[/[:space:]]#}:#[^/]*}:-${TMPDIR:-/tmp}/xyzabc312-zinit-protection-triggered}"/*(ND)
+                if [[ -z $option && -n $ICE[reset] ]] {
+                    (( !OPTS[opt_-q,--quiet] )) && {
+                        +zi-log -n "{m} Resetting with "
+                        builtin print -r -- "$ICE[reset] ($msg_bit)"
+                    }
+                    # The gh-r update path does not cd into the plugin dir, so relative reset code needs it.
+                    ( builtin cd -q "$local_dir" && builtin eval "$ICE[reset]" )
                 } else {
-                    (( !OPTS[opt_-q,--quiet] )) && +zi-log "{pre}reset ($msg_bit): {msg2}running: {rst}${ICE[reset]:-rm -rf ${${ZINIT[PLUGINS_DIR]:#[/[:space:]]##}:-${TMPDIR:-/tmp}/xyzabc312}/${${(M)${local_dir##${ZINIT[PLUGINS_DIR]}[/[:space:]]#}:#[^/]*}:-${TMPDIR:-/tmp}/xyzabc312-zinit-protection-triggered}/*}"
-                    builtin eval ${ICE[reset]:-command rm -rf ${${ZINIT[PLUGINS_DIR]:#[/[:space:]]##}:-${TMPDIR:-/tmp}/xyzabc312}/"${${(M)${local_dir##${ZINIT[PLUGINS_DIR]}[/[:space:]]#}:#[^/]*}:-${TMPDIR:-/tmp}/xyzabc312-zinit-protection-triggered}"/*(ND)}
+                    (( !OPTS[opt_-q,--quiet] )) && +zi-log "{m} Resetting: reinstalling the release ($msg_bit)"
                 }
+                # A reset release gets a fresh download. ziextract keeps the old files in ._backup until it succeeds.
+                ZINIT[annex-multi-flag:pull-active]=2
             } elif (( !skip_pull )) {
-                if (( option )) {
-                    +zi-log "{pre}reset ($msg_bit): {msg2}Resetting the repository with command:{rst} git reset --hard HEAD {…}"
-                    command git reset --hard HEAD
-                } else {
-                    +zi-log "{pre}reset ($msg_bit): {msg2}Resetting the repository with command:{rst} ${ICE[reset]:-git reset --hard HEAD} {…}"
-                    builtin eval "${ICE[reset]:-git reset --hard HEAD}"
+                local rcmd="command git reset --hard${${OPTS[opt_-q,--quiet]:#0}:+ --quiet} HEAD"
+                (( option )) || rcmd=${ICE[reset]:-$rcmd}
+                (( !OPTS[opt_-q,--quiet] )) && {
+                    +zi-log -n "{m} Resetting with "
+                    builtin print -r -- "${rcmd#command } ($msg_bit)"
                 }
+                builtin eval "$rcmd"
             }
         }
     }

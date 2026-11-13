@@ -214,6 +214,34 @@
   assert $clean does_not_contain ' /lonelyupd'
 }
 
+@test 'update --reset -q: snippet with a newer remote copy is removed and refetched, with no reset output' {
+  # Local HTTP server, so the snippet update path sees a Last-Modified header and no GitHub traffic.
+  local srv="$zi_test_dir/srv" port=$(python3 -c 'import socket;s=socket.socket();s.bind(("127.0.0.1",0));print(s.getsockname()[1])')
+  command mkdir -p $srv
+  builtin print -r '# old' >| $srv/snip.zsh
+  python3 -m http.server $port --bind 127.0.0.1 --directory $srv &>/dev/null &!
+  local srv_pid=$!
+  local i; for i in {1..50}; do
+    if command curl -sf "http://127.0.0.1:$port/snip.zsh" &>/dev/null; then break; fi
+    command sleep 0.1
+  done
+  local url="http://127.0.0.1:$port/snip.zsh"
+  run zinit snippet $url
+  local local_file=$(command find $ZINIT[SNIPPETS_DIR] -name snip.zsh -type f | head -n1)
+  assert "$local_file" is_file
+  # The hardlink keeps the old inode: it holds old content only if rm ran before the download.
+  command ln $local_file $zi_test_dir/old-inode
+  command touch -t 202001010000 $local_file
+  builtin print -r '# new' >| $srv/snip.zsh
+  run zinit update -q --reset $url
+  kill $srv_pid 2>/dev/null
+  local clean=$(strip_ansi "$output")
+  assert "$(<$local_file)" same_as '# new'
+  assert "$(<$zi_test_dir/old-inode)" same_as '# old'
+  assert "$clean" does_not_contain Resetting
+  assert "$clean" does_not_contain "reset skipped"
+}
+
 @test 'update: single up-to-date plugin prints its header, and -q -u prints nothing' {
   upd_fixture tst---updquiet updquiet
   run zinit update tst/updquiet

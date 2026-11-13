@@ -1621,7 +1621,7 @@ EOF
 —— times [-s] [-m] [-a] – statistics on plugin load times, sorted in order of loading; -s – use seconds instead of milliseconds, -m – show plugin loading moments, -a – show both load times and loading moments
 —— uncompile ${ZINIT[col-pname]}plg-spec${ZINIT[col-rst]}            – remove compiled version of plugin (or of all plugins if ——all passed)
 —— unload ${ZINIT[col-pname]}plg-spec${ZINIT[col-rst]}               – unload plugin loaded with \`zinit load ...', -q – quiet
-—— update [-q] ${ZINIT[col-pname]}plg-spec${ZINIT[col-rst]}|URL      – Git update plugin or snippet (or all plugins and snippets if ——all passed); besides -q accepts also ——quiet, and also -r/--reset – this option causes to run git reset --hard / svn revert before pulling changes
+—— update [-q] ${ZINIT[col-pname]}plg-spec${ZINIT[col-rst]}|URL      – Git update plugin or snippet (or all plugins and snippets if ——all passed); besides -q accepts also ——quiet, and also -r/--reset – this option causes to run git reset --hard / svn revert before pulling changes, and to reinstall gh-r releases
 —— version                       – display zinit version
 —— zstatus                       – overall Zinit status
 —— add-fpath|fpath ${ZINIT[col-info]}[-f|--front]${ZINIT[col-rst]} \\
@@ -3158,6 +3158,8 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
                     break
                 }
             }
+            # --reset reinstalls a release, also when it is up to date.
+            (( OPTS[opt_-r,--reset] )) && ZINIT[annex-multi-flag:pull-active]=2
             if (( ZINIT[annex-multi-flag:pull-active] <= 1 && !OPTS[opt_-q,--quiet] )) {
                 builtin print -r -- "  already up to date${version:+ ($version)}"
             }
