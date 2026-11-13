@@ -4,7 +4,7 @@
   GH_RAW_URL='https://raw.githubusercontent.com'
   setup_snippet_ok() { # state=$1, output=$2, file=$3
     assert $1 equals 0
-    assert $2 contains "Setting up snippet"
+    assert $2 contains "Downloading snippet"
     assert $3 is_file; assert $3 is_readable
   }
   install_completion(){
@@ -68,7 +68,7 @@ EOF
    run zinit is-snippet link nocompile id-as'mysnippet' for $actual
 
   assert $state equals 0
-  assert "$output" contains "Setting up snippet"
+  assert "$output" contains "Installing snippet"
   assert "$output" contains "Linking"
 
   local artifact="${ZINIT[SNIPPETS_DIR]}/mysnippet/mysnippet"
