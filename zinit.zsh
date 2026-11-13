@@ -2298,10 +2298,8 @@ $match[7]}:-${ZINIT[__last-formatter-code]}}}:+}}}//←→}
     } elif [[ -n $allowed ]] {
         shift 2
         # No – an error message:
-        +zi-log "{b}{u-warn}ERROR{b-warn}:{rst}{msg2} Incorrect options given{ehi}:" \
-                "${(Mpj:$sep:)@:#-*}{rst}{msg2}. Allowed for the subcommand{ehi}:{rst}" \
-                "{apo}\`{cmd}$cmd{apo}\`{msg2} are{ehi}:{rst}" \
-                "{nl}  {opt}${allowed//\|/$sep2}{msg2}."
+        +zi-log "{e} Incorrect options given: {ehi}${(Mpj:$sep:)@:#-*}{rst}." \
+                "Allowed for {cmd}$cmd{rst}:{nl}  {opt}${allowed//\|/$sep2}{rst}."
     } else {
         local -a cmds
         cmds=( load snippet update delete )
@@ -2750,6 +2748,7 @@ zinit() {
             builtin set -- "${@[@]:#(-b|--command|-f|--force|-x)}"
             [[ $1 = light && -z ${OPTS[(I)-b]} ]] && ICE[light-mode]=
             [[ $1 = snippet ]] && ICE[is-snippet]= || ___is_snippet=-1
+            local ___subcmd=$1
             shift
 
             ZINIT_ICES=( "${(kv)ICE[@]}" )
@@ -2757,7 +2756,7 @@ zinit() {
             1="${1:+@}${1#@}${2:+/$2}"
             (( $# > 1 )) && { shift -p $(( $# - 1 )); }
             [[ -z $1 ]] && {
-               +zi-log "Argument needed, try: {cmd}help."
+               +zi-log "{e} {cmd}zinit $___subcmd{rst} needs an argument. See {cmd}zinit $___subcmd --help{rst}"
                return 1
             }
         } else {
@@ -3053,7 +3052,7 @@ You can try to prepend {apo}${___q}{lhi}@{apo}'{error} to the ID if the last ice
                 (unload)
                     (( ${+functions[.zinit-unload]} )) || builtin source "${ZINIT[BIN_DIR]}/zinit-autoload.zsh" || return 1
                     if [[ -z $2 && -z $3 ]]; then
-                        builtin print "Argument needed, try: help"; ___retval=1
+                        +zi-log "{e} Argument needed, try: {cmd}zinit help{rst}"; ___retval=1
                     else
                         [[ $2 = -q ]] && { 5=-q; shift; }
                         # Unload given plugin. Cloned directory remains intact
@@ -3114,7 +3113,7 @@ You can try to prepend {apo}${___q}{lhi}@{apo}'{error} to the ID if the last ice
                     ;;
                 (cdisable)
                     if [[ -z $2 ]]; then
-                        builtin print "Argument needed, try: help"; ___retval=1
+                        +zi-log "{e} Argument needed, try: {cmd}zinit help{rst}"; ___retval=1
                     else
                         local ___f="_${2#_}"
                         # Disable completion given by completion function name
@@ -3132,7 +3131,7 @@ You can try to prepend {apo}${___q}{lhi}@{apo}'{error} to the ID if the last ice
                     ;;
                 (cenable)
                     if [[ -z $2 ]]; then
-                        builtin print "Argument needed, try: help"; ___retval=1
+                        +zi-log "{e} Argument needed, try: {cmd}zinit help{rst}"; ___retval=1
                     else
                          local ___f="_${2#_}"
                         # Enable completion given by completion function name
@@ -3159,7 +3158,7 @@ You can try to prepend {apo}${___q}{lhi}@{apo}'{error} to the ID if the last ice
                     ;;
                 (cuninstall)
                     if [[ -z $2 && -z $3 ]]; then
-                        builtin print "Argument needed, try: help"; ___retval=1
+                        +zi-log "{e} Argument needed, try: {cmd}zinit help{rst}"; ___retval=1
                     else
                         (( ${+functions[.zinit-forget-completion]} )) || builtin source "${ZINIT[BIN_DIR]}/zinit-install.zsh" || return 1
                         # Uninstalls completions for plugin.
