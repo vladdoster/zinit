@@ -897,9 +897,10 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
 
     if [[ ! -d $local_dir/$dirname ]]; then
         local id_msg_part="{…} (at label{ehi}:{rst} {id-as}$id_as{rst})"
-        local verb=Downloading
-        [[ $url != (ftp(|s)|http(|s)|scp)://* ]] && verb=Installing
-        [[ $update != -u ]] && +zi-log "{nl}{i} $verb snippet {b}{file}$sname{rst}${ICE[id-as]:+$id_msg_part}"
+        # A local file shows its path as given; sname shortens it.
+        local verb=Downloading shown=$sname
+        [[ $url != (ftp(|s)|http(|s)|scp)://* ]] && verb=Installing shown=$url
+        [[ $update != -u ]] && +zi-log "{nl}{i} $verb snippet {b}{file}$shown{rst}${ICE[id-as]:+$id_msg_part}"
         command mkdir -p "$local_dir"
     fi
 
@@ -1111,28 +1112,29 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
             }
 
             command mkdir -p "$local_dir/$dirname"
+            # A bad argument such as `zinit snippet help` lands here: say what a snippet can be.
             if [[ ! -e $url ]] {
-                (( !OPTS[opt_-q,--quiet] )) && +zi-log "{ehi}ERROR:{error} The source file {file}$url{error} doesn't exist.{rst}"
+                +zi-log "{e} The file {file}$url{rst} doesn't exist. A snippet is a URL, a shorthand such as" \
+                    "{cmd}OMZP::git{rst}, or a path to a file. See {cmd}zinit snippet --help{rst}"
+                retval=4
+            } elif [[ ! -f $url && $url != /dev/null ]] {
+                +zi-log "{e} {file}$url{rst} is not a regular file"
+                retval=4
+            } elif [[ ! -r $url && $url != /dev/null ]] {
+                +zi-log "{e} {file}$url{rst} is not readable. Check its permissions"
                 retval=4
             }
-            if [[ -e $url && ! -f $url && $url != /dev/null ]] {
-                (( !OPTS[opt_-q,--quiet] )) && +zi-log "{ehi}ERROR:{error} The source {file}$url{error} isn't a regular file.{rst}"
-                retval=4
-            }
-            if [[ -e $url && ! -r $url && $url != /dev/null ]] {
-                (( !OPTS[opt_-q,--quiet] )) && +zi-log "{ehi}ERROR:{error} The source {file}$url{error} isn't" \
-                    "accessible (wrong permissions).{rst}"
-                retval=4
-            }
-            if ! (( ${+ICE[link]} )) {
+            if (( retval == 4 )) {
+                # The check above already said why. A copy would only fail again.
+                :
+            } elif ! (( ${+ICE[link]} )) {
                 if (( !OPTS[opt_-q,--quiet] )) && [[ $url != /dev/null ]] {
-                    +zi-log "{msg}Copying {file}$filename{msg}{…}{rst}"
-                    command cp -vf "$url" "$local_dir/$dirname/$filename" || \
-                        { +zi-log "{ehi}ERROR:{error} The file copying has been unsuccessful.{rst}"; retval=4; }
+                    +zi-log "{m} Copying {file}$url{rst}"
+                    command cp -f "$url" "$local_dir/$dirname/$filename" || \
+                        { +zi-log "{e} Failed to copy {file}$url{rst}"; retval=4; }
                 } else {
                     command cp -f "$url" "$local_dir/$dirname/$filename" &>/dev/null || \
-                        { +zi-log "{ehi}ERROR:{error} The copying of {file}$filename{error} has been unsuccessful"\
-    "${${(M)OPTS[opt_-q,--quiet]:#1}:+, skip the -q/--quiet option for more information}.{rst}"; retval=4; }
+                        { +zi-log "{e} Failed to copy {file}$url{rst}${${(M)OPTS[opt_-q,--quiet]:#1}:+. Run it without -q for details}"; retval=4; }
                 }
             } else {
                 if (( $+commands[realpath] )) {
@@ -1143,13 +1145,12 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
                     fi
                 }
                 if (( !OPTS[opt_-q,--quiet] )) && [[ $url != /dev/null ]] {
-                    +zi-log "{msg}Linking {file}$filename{msg}{…}{rst}"
-                    command ln -svf "$url" "$local_dir/$dirname/$filename" || \
-                        { +zi-log "{ehi}ERROR:{error} The file linking has been unsuccessful.{rst}"; retval=4; }
+                    +zi-log "{m} Linking {file}$url{rst}"
+                    command ln -sf "$url" "$local_dir/$dirname/$filename" || \
+                        { +zi-log "{e} Failed to link {file}$url{rst}"; retval=4; }
                 } else {
                     command ln -sf "$url" "$local_dir/$dirname/$filename" &>/dev/null || \
-                        { +zi-log "{ehi}ERROR:{error} The link of {file}$filename{error} has been unsuccessful"\
-    "${${(M)OPTS[opt_-q,--quiet]:#1}:+, skip the -q/--quiet option for more information}.{rst}"; retval=4; }
+                        { +zi-log "{e} Failed to link {file}$url{rst}${${(M)OPTS[opt_-q,--quiet]:#1}:+. Run it without -q for details}"; retval=4; }
                 }
             }
         }
