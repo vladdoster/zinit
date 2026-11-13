@@ -277,3 +277,12 @@
   assert $clean contains "$old -> $new"
   assert "$($g -C $pd rev-parse HEAD)" same_as "$full"
 }
+
+@test 'load by bare name keeps the owner recorded at install' {
+  upd_fixture barelonely barelonely
+  command mkdir -p $ZINIT[PLUGINS_DIR]/barelonely/._zinit
+  builtin print -rn tst/barelonely >| $ZINIT[PLUGINS_DIR]/barelonely/._zinit/teleid
+  load_and_show() { zinit load barelonely &>/dev/null; builtin print -r -- "SICE=${ZINIT_SICE[barelonely]}" }
+  run load_and_show
+  assert $output contains 'teleid tst/barelonely'
+}

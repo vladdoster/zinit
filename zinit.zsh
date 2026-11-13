@@ -1691,6 +1691,11 @@ builtin setopt noaliases
     if [[ -n ${ICE[teleid]} ]] {
         .zinit-any-to-user-plugin "${ICE[teleid]}"
         ___user="${reply[-2]}" ___plugin="${reply[-1]}"
+    } elif [[ -z $___user && -f $___pdir_path/._zinit/teleid ]] {
+        # A load by bare name (`zinit load delta`) keeps the owner recorded at install.
+        ICE[teleid]="$(<$___pdir_path/._zinit/teleid)"
+        .zinit-any-to-user-plugin "${ICE[teleid]}"
+        ___user="${reply[-2]}" ___plugin="${reply[-1]}"
     } else {
         ICE[teleid]="$___user${${___user:#%}:+/}$___plugin"
     }
