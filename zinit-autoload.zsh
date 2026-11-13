@@ -3202,7 +3202,8 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
             ( builtin cd -q "$local_dir" || return 1
               integer had_output=0
               local IFS=$'\n'
-              command git fetch --quiet && \
+              # zsh backgrounds only the last pipeline of `a && b | c &`, so $! is stale after a failed fetch.
+              if command git fetch --quiet; then
                 command git --no-pager log --color --date=short --pretty=format:'%Cgreen%cd %h %Creset%s%n' ..FETCH_HEAD | \
                 while read line; do
                   [[ -n ${line%%[[:space:]]##} ]] && {
@@ -3221,10 +3222,11 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
                 done | \
                 command tee .zinit_lastupd | \
                 .zinit-pager &
-
-              integer pager_pid=$!
-              { sleep 20 && kill -9 $pager_pid 2>/dev/null 1>&2; } &!
-              { wait $pager_pid; } > /dev/null 2>&1
+                integer pager_pid=$!
+                # Redirect the whole watchdog: an open stdout makes a captured update wait for the sleep.
+                { sleep 20 && kill -9 $pager_pid; } >/dev/null 2>&1 &!
+                { wait $pager_pid; } > /dev/null 2>&1
+              fi
 
               local -a log
               { log=( ${(@f)"$(<$local_dir/.zinit_lastupd)"} ); } 2>/dev/null
