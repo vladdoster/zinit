@@ -286,3 +286,32 @@
   run load_and_show
   assert $output contains 'teleid tst/barelonely'
 }
+
+@test 'update: URL snippet update exits 0, and --reset prints Resetting before Downloading' {
+  # Local HTTP server, so the snippet update path sees a Last-Modified header and no GitHub traffic.
+  local srv="$zi_test_dir/srv2" port=$(python3 -c 'import socket;s=socket.socket();s.bind(("127.0.0.1",0));print(s.getsockname()[1])')
+  command mkdir -p $srv
+  builtin print -r '# v1' >| $srv/snip2.zsh
+  # An old Last-Modified makes the fresh local copy count as up to date.
+  command touch -t 202001010000 $srv/snip2.zsh
+  python3 -m http.server $port --bind 127.0.0.1 --directory $srv &>/dev/null &!
+  local srv_pid=$! url="http://127.0.0.1:$port/snip2.zsh"
+  local i; for i in {1..50}; do
+    if command curl -sf $url &>/dev/null; then break; fi
+    command sleep 0.1
+  done
+  run zinit snippet $url
+  assert $state equals 0
+  run zinit update $url
+  assert $state equals 0
+  assert "$(strip_ansi "$output")" contains 'already up to date'
+  local local_file=$(command find $ZINIT[SNIPPETS_DIR] -name snip2.zsh -type f | head -n1)
+  command touch -t 202001010000 $local_file
+  builtin print -r '# v2' >| $srv/snip2.zsh
+  run zinit update --reset $url
+  kill $srv_pid 2>/dev/null
+  local clean=$(strip_ansi "$output")
+  assert $state equals 0
+  assert "$(<$local_file)" same_as '# v2'
+  assert "$(builtin print -r -- "$clean" | command grep -m1 -e 'Resetting' -e 'Downloading http')" contains 'Resetting'
+}
