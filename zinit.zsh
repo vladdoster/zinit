@@ -2743,9 +2743,9 @@ zinit() {
             # Classic syntax -> simulate a call through the for-syntax.
             () {
                 builtin setopt localoptions extendedglob
-                : ${@[@]//(#b)([ $'\t']##|(#s))(-b|--command|-f|--force)([ $'\t']##|(#e))/${OPTS[${match[2]}]::=1}}
+                : ${@[@]//(#b)([ $'\t']##|(#s))(-b|--command|-f|--force|-x)([ $'\t']##|(#e))/${OPTS[${match[2]}]::=1}}
             } "$@"
-            builtin set -- "${@[@]:#(-b|--command|-f|--force)}"
+            builtin set -- "${@[@]:#(-b|--command|-f|--force|-x)}"
             [[ $1 = light && -z ${OPTS[(I)-b]} ]] && ICE[light-mode]=
             [[ $1 = snippet ]] && ICE[is-snippet]= || ___is_snippet=-1
             shift
@@ -2933,9 +2933,11 @@ zinit() {
                             ICE[cloneonly]=""
                         }
 
+                        # .zinit-load-snippet takes only -f and --command, each as its own word.
+                        local -a ___opt
                         (( ___is_snippet )) && \
-                            local ___opt="${(k)OPTS[*]}" || \
-                            local ___opt="${${ICE[light-mode]+light}:-${OPTS[(I)-b]:+light-b}}"
+                            ___opt=( ${OPTS[opt_-f,--force]:+-f} ${OPTS[opt_-x,--command]:+--command} ) || \
+                            ___opt=( ${${ICE[light-mode]+light}:-${OPTS[(I)-b]:+light-b}} )
 
                         .zinit-load-object ${${${(M)___is_snippet:#1}:+snippet}:-plugin} $___id $___opt
                         integer ___last_retval=$?
