@@ -382,9 +382,9 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
                     }
                     [[ $count -eq 1 && -n $version && -n $old_version && $old_version != "$version" ]] && \
                         builtin print -r -- "  $old_version -> $version"
-                    +zi-log "{m} Downloading {url}$url{rst}"
-                    if { ! .zinit-download-file-stdout "$url" 0 1 >! "${REPLY:t}" } {
-                        if { ! .zinit-download-file-stdout "$url" 1 1 >! "${REPLY:t}" } {
+                    (( !OPTS[opt_-q,--quiet] )) && +zi-log "{m} Downloading {url}$url{rst}"
+                    if { ! .zinit-download-file-stdout "$url" 0 $(( !OPTS[opt_-q,--quiet] )) >! "${REPLY:t}" } {
+                        if { ! .zinit-download-file-stdout "$url" 1 $(( !OPTS[opt_-q,--quiet] )) >! "${REPLY:t}" } {
                             command rm -f "${REPLY:t}"
                             +zi-log "Download of release for \`$remote_url_path' " \
                                 "failed.{nl}Tried url: $url."
@@ -1017,7 +1017,7 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
                     local -a matched
                     matched=( $local_dir/$dirname/$filename(DNms-$secs) )
                     if (( ${#matched} )) {
-                        builtin print -r -- "  already up to date"
+                        (( !OPTS[opt_-q,--quiet] )) && builtin print -r -- "  already up to date"
                         # Empty-update return-short path – it also decides the
                         # pull-active flag after the return from this sub-shell
                         (( ${+ICE[run-atpull]} || OPTS[opt_-u,--urge] )) && skip_dl=1 || return 0
@@ -1030,6 +1030,10 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
                         #   - if true, then the mode is 2 minus run-atpull-activation,
                         #   - if false, then mode is 3 → a forced download (no remote mtime found).
                         ZINIT[annex-multi-flag:pull-active]=$(( secs > 1 ? (2 - skip_dl) : 3 ))
+                    }
+                    if (( OPTS[opt_-q,--quiet] && !skip_dl && ZINIT[annex-multi-flag:pull-active] >= 2 )) {
+                        local id_msg_part="{…} (identified as{ehi}:{rst} {id-as}$id_as{rst})"
+                        +zi-log "{i} Updating snippet {happy}$sname{rst}${ICE[id-as]:+$id_msg_part}"
                     }
 
                     # Run annexes' atpull hooks (the before atpull-ice ones).
@@ -1052,8 +1056,8 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
                     }
 
                     if (( !skip_dl )) {
-                        if { ! .zinit-download-file-stdout "$url" 0 1 >! "$dirname/$filename" } {
-                            if { ! .zinit-download-file-stdout "$url" 1 1 >! "$dirname/$filename" } {
+                        if { ! .zinit-download-file-stdout "$url" 0 $(( !OPTS[opt_-q,--quiet] )) >! "$dirname/$filename" } {
+                            if { ! .zinit-download-file-stdout "$url" 1 $(( !OPTS[opt_-q,--quiet] )) >! "$dirname/$filename" } {
                                 command rm -f "$dirname/$filename"
                                 +zi-log "{u-warn}ERROR{b-warn}:{rst} Download failed."
                                 return 4
@@ -2401,11 +2405,13 @@ __zinit-cmake-base-hook () {
         () {
             builtin source "${ZINIT[BIN_DIR]}/zinit-autoload.zsh" || return 1
             setopt local_options extended_glob warn_create_global
-            local quiet=1
-            if [[ $tpe == snippet ]]; then
-                .zinit-compile-plugin "%$dir"
+            local quiet=1 target=$id_as out
+            [[ $tpe == snippet ]] && target=%$dir
+            if (( OPTS[opt_-q,--quiet] )); then
+                # Under -q, show the compile output only when the compile fails.
+                out=$(.zinit-compile-plugin "$target") || { builtin print -r -- "$out"; return 1; }
             else
-                .zinit-compile-plugin "$id_as"
+                .zinit-compile-plugin "$target"
             fi
         }
     fi

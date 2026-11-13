@@ -214,6 +214,16 @@
   assert $clean does_not_contain ' /lonelyupd'
 }
 
+@test 'update: single up-to-date plugin prints its header, and -q -u prints nothing' {
+  upd_fixture tst---updquiet updquiet
+  run zinit update tst/updquiet
+  local clean=$(strip_ansi "$output")
+  assert $(print -r -- "$clean" | sed -n '/^==> Updating tst\/updquiet/,$p' | command grep -c 'already up to date') equals 1
+  run zinit update -q -u tst/updquiet
+  local quiet=$(strip_ansi "$output")
+  assert "${quiet//[[:space:]]/}" is_empty
+}
+
 @test 'update: short-SHA ver pin stays on the pin, then moves to a newer pin' {
   upd_fixture tst---updpin updpin
   local pd=$ZINIT[PLUGINS_DIR]/tst---updpin
