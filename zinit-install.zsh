@@ -386,13 +386,11 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
                             builtin print -r -- "  reinstalling $version"
                     }
                     (( !OPTS[opt_-q,--quiet] )) && +zi-log "{m} Downloading {url}$url{rst}"
+                    # curl and wget retry on their own. A second call here only repeats the error.
                     if { ! .zinit-download-file-stdout "$url" 0 $(( !OPTS[opt_-q,--quiet] )) >! "${REPLY:t}" } {
-                        if { ! .zinit-download-file-stdout "$url" 1 $(( !OPTS[opt_-q,--quiet] )) >! "${REPLY:t}" } {
-                            command rm -f "${REPLY:t}"
-                            +zi-log "Download of release for \`$remote_url_path' " \
-                                "failed.{nl}Tried url: $url."
-                            return 1
-                        }
+                        command rm -f "${REPLY:t}"
+                        +zi-log "{e} Failed to download the {happy}$remote_url_path{rst} release from {url}$url{rst}"
+                        return 1
                     }
                     if .zinit-download-file-stdout "$url.sig" 2>/dev/null >! "${REPLY:t}.sig"; then
                         :
@@ -867,7 +865,8 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
     trap "command rmdir ${(qqq)local_dir}/${(qqq)dirname} 2>/dev/null; return 1;" INT TERM QUIT HUP
 
     local -a list arr
-    integer retval=0 hook_rc=0
+    # retval carries the pull level (0-3) or 4 for a failed download. hook_err keeps a failed hook's code.
+    integer retval=0 hook_rc=0 hook_err=0
     local teleid_clean=${ICE[teleid]%%\?*}
     [[ $teleid_clean == *://* ]] && \
         local sname=${(M)teleid_clean##*://[^/]##(/[^/]##)(#c0,4)} || \
@@ -929,7 +928,7 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
             (
                 .zinit-cd-quiet "$local_dir" || return 4
 
-                (( !OPTS[opt_-q,--quiet] )) && +zi-log "{i} Downloading {file}$sname{rst} ${${ICE[svn]+" (with Subversion)"}:-" (with curl, wget, lftp)"}{rst}"
+                (( !OPTS[opt_-q,--quiet] && ${+ICE[svn]} )) && +zi-log "{m} Downloading {url}$sname{rst} with Subversion"
 
                 if (( ${+ICE[svn]} )) {
                     if [[ $update = -u ]] {
@@ -1062,12 +1061,13 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
                     }
 
                     if (( !skip_dl )) {
+                        # Print after the hooks: a reset hook runs before the download.
+                        (( !OPTS[opt_-q,--quiet] )) && +zi-log "{m} Downloading {url}$url{rst}"
+                        # curl and wget retry on their own. A second call here only repeats the error.
                         if { ! .zinit-download-file-stdout "$url" 0 $(( !OPTS[opt_-q,--quiet] )) >! "$dirname/$filename" } {
-                            if { ! .zinit-download-file-stdout "$url" 1 $(( !OPTS[opt_-q,--quiet] )) >! "$dirname/$filename" } {
-                                command rm -f "$dirname/$filename"
-                                +zi-log "{u-warn}ERROR{b-warn}:{rst} Download failed."
-                                return 4
-                            }
+                            command rm -f "$dirname/$filename"
+                            +zi-log "{e} Failed to download {url}$url{rst}"
+                            return 4
                         }
                     }
                     return $ZINIT[annex-multi-flag:pull-active]
@@ -1115,8 +1115,8 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
                     "${arr[5]}" snippet "$save_url" "$id_as" "$local_dir/$dirname" "${${key##(zinit|z-annex) hook:}%% <->}" update:file
                     hook_rc="$?"
                     [[ "$hook_rc" -ne 0 ]] && {
-                        retval="$hook_rc"
-                        builtin print -Pr -- "${ZINIT[col-warn]}Warning:%f%b ${ZINIT[col-obj]}${arr[5]}${ZINIT[col-warn]} hook returned with ${ZINIT[col-obj]}${hook_rc}${ZINIT[col-rst]}"
+                        hook_err="$hook_rc"
+                        +zi-log "{w} {obj}${arr[5]}{rst} hook returned {obj}$hook_rc"
                     }
                 done
             }
@@ -1189,12 +1189,12 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
                 "${arr[5]}" snippet "$save_url" "$id_as" "$local_dir/$dirname" "${${key##(zinit|z-annex) hook:}%% <->}" update:0
                 hook_rc="$?"
                 [[ "$hook_rc" -ne 0 ]] && {
-                    retval="$hook_rc"
-                    builtin print -Pr -- "${ZINIT[col-warn]}Warning:%f%b ${ZINIT[col-obj]}${arr[5]}${ZINIT[col-warn]} hook returned with ${ZINIT[col-obj]}${hook_rc}${ZINIT[col-rst]}"
+                    hook_err="$hook_rc"
+                    +zi-log "{w} {obj}${arr[5]}{rst} hook returned {obj}$hook_rc"
                 }
             done
 
-            return $retval;
+            return $hook_err
         }
 
         if [[ $update = -u ]] {
@@ -1210,8 +1210,8 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
                 "${arr[5]}" snippet "$save_url" "$id_as" "$local_dir/$dirname" "${${key##(zinit|z-annex) hook:}%% <->}" update
                 hook_rc=$?
                 [[ "$hook_rc" -ne 0 ]] && {
-                    retval="$hook_rc"
-                    builtin print -Pr -- "${ZINIT[col-warn]}Warning:%f%b ${ZINIT[col-obj]}${arr[5]}${ZINIT[col-warn]} hook returned with ${ZINIT[col-obj]}${hook_rc}${ZINIT[col-rst]}"
+                    hook_err="$hook_rc"
+                    +zi-log "{w} {obj}${arr[5]}{rst} hook returned {obj}$hook_rc"
                 }
             done
         } else {
@@ -1252,8 +1252,8 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
                     "${arr[5]}" snippet "$save_url" "$id_as" "$local_dir/$dirname" "${${key##(zinit|z-annex) hook:}%% <->}" update
                     hook_rc=$?
                     [[ "$hook_rc" -ne 0 ]] && {
-                        retval="$hook_rc"
-                        builtin print -Pr -- "${ZINIT[col-warn]}Warning:%f%b ${ZINIT[col-obj]}${arr[5]}${ZINIT[col-warn]} hook returned with ${ZINIT[col-obj]}${hook_rc}${ZINIT[col-rst]}"
+                        hook_err="$hook_rc"
+                        +zi-log "{w} {obj}${arr[5]}{rst} hook returned {obj}$hook_rc"
                     }
                 done
             }
@@ -1270,11 +1270,13 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
                 "${arr[5]}" snippet "$save_url" "$id_as" "$local_dir/$dirname" "${${key##(zinit|z-annex) hook:}%% <->}" update:$ZINIT[annex-multi-flag:pull-active]
                 hook_rc=$?
                 [[ "$hook_rc" -ne 0 ]] && {
-                    retval="$hook_rc"
-                    builtin print -Pr -- "${ZINIT[col-warn]}Warning:%f%b ${ZINIT[col-obj]}${arr[5]}${ZINIT[col-warn]} hook returned with ${ZINIT[col-obj]}${hook_rc}${ZINIT[col-rst]}"
+                    hook_err="$hook_rc"
+                    +zi-log "{w} {obj}${arr[5]}{rst} hook returned {obj}$hook_rc"
                 }
             done
         }
+        # Without this, the status of the last `[[ ]] && {…}` above ends the subshell: 1 on success.
+        return $hook_err
     ) || return $?
 
     typeset -ga INSTALLED_EXECS
