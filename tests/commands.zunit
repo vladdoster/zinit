@@ -166,6 +166,20 @@
   assert $output contains 'message'; assert $state equals 0
 }
 
+@test 'update: develop-branch plugin pulls the new commit and shows old -> new' {
+  upd_fixture tst---updev updev
+  local old=$(command git -C $ZINIT[PLUGINS_DIR]/tst---updev rev-parse --short HEAD)
+  upd_push_commit updev
+  local new=$(command git -C $zi_test_dir/remotes/updev.work rev-parse --short HEAD)
+  local full=$(command git -C $zi_test_dir/remotes/updev.work rev-parse HEAD)
+  run zinit update tst/updev
+  local clean=$(strip_ansi "$output")
+  assert $clean does_not_contain "couldn't find remote ref"
+  assert $clean contains "$old -> $new"
+  assert $(print -r -- "$clean" | command grep -c -x 'Fast-forward') equals 0
+  assert "$(command git -C $ZINIT[PLUGINS_DIR]/tst---updev rev-parse HEAD)" same_as "$full"
+}
+
 @test 'update --all: up-to-date plugin prints "already up to date" after its header' {
   upd_fixture tst---updsame updsame
   run zinit update --all
@@ -173,4 +187,29 @@
   assert $state equals 0
   assert $clean contains 'Updating tst/updsame'
   assert $(print -r -- "$clean" | sed -n '/Updating tst\/updsame/,/^==>/p' | command grep -c 'already up to date') equals 1
+}
+
+@test 'update --all: failed plugin gives non-zero exit and a Summary naming the failed id' {
+  upd_fixture tst---updbroken updbroken
+  command git -C $ZINIT[PLUGINS_DIR]/tst---updbroken remote set-url origin $zi_test_dir/remotes/missing.git
+  run zinit update --all
+  local clean=$(strip_ansi "$output")
+  assert $(( state != 0 )) equals 1
+  assert $(print -r -- "$clean" | command grep -A2 '^==> Summary' | command grep -c 'failed (.*tst/updbroken.*)') equals 1
+}
+
+@test 'update --all: plugin id without a user never prints a leading slash' {
+  upd_fixture lonelyupd lonelyupd
+  # A pick ice that matches nothing makes the compile hook print "pick-ice didn't match" and return 1.
+  command mkdir -p $ZINIT[PLUGINS_DIR]/lonelyupd/._zinit
+  builtin print -r nomatch >| $ZINIT[PLUGINS_DIR]/lonelyupd/._zinit/pick
+  upd_push_commit lonelyupd
+  run zinit update --all
+  local clean=$(strip_ansi "$output")
+  assert $clean contains 'Updating lonelyupd'
+  assert $clean contains "pick-ice didn't match"
+  assert $(print -r -- "$clean" | command grep -A2 '^==> Summary' | command grep -c 'failed (.*lonelyupd.*)') equals 1
+  assert $clean does_not_contain 'Warning: /'
+  assert $clean does_not_contain '(/lonelyupd'
+  assert $clean does_not_contain ' /lonelyupd'
 }

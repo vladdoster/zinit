@@ -3186,17 +3186,21 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
                 if (( ZINIT[annex-multi-flag:pull-active] >= 2 )) {
                     if ! .zinit-setup-plugin-dir "$user" "$plugin" "$id_as" release -u $version; then
                         ZINIT[annex-multi-flag:pull-active]=0
+                        retval=1
                     fi
                 }
                 ICE=()
             }
         }
 
-        if [[ -d $local_dir/.git ]] && ( builtin cd -q $local_dir ; command git show-ref --verify --quiet refs/heads/main ); then
-            local main_branch=main
-        else
-            local main_branch=master
+        local main_branch
+        if [[ -d $local_dir/.git ]]; then
+            main_branch=$(builtin cd -q $local_dir && command git symbolic-ref --short -q HEAD) || {
+                main_branch=$(builtin cd -q $local_dir && command git symbolic-ref --short -q refs/remotes/origin/HEAD)
+                main_branch=${main_branch#origin/}
+            }
         fi
+        main_branch=${main_branch:-master}
 
         if (( ! is_release )) {
             ( builtin cd -q "$local_dir" || return 1
@@ -3278,16 +3282,20 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
         }
 
         if [[ -d $local_dir/.git ]]; then
-            (
+            if (
                 builtin cd -q "$local_dir" # || return 1 - don't return, maybe it's some hook's logic
                 if (( OPTS[opt_-q,--quiet] )) {
                     command git pull --recurse-submodules ${=ice[pullopts]:---ff-only} origin ${ice[ver]:-$main_branch} &> /dev/null
                 } else {
                     command git pull --recurse-submodules ${=ice[pullopts]:---ff-only} origin ${ice[ver]:-$main_branch} |& command grep -E -v '(FETCH_HEAD|up.to.date\.|From.*://|^Updating [0-9a-f]+\.\.[0-9a-f]+$|^Fast-forward$)'
+                    return $pipestatus[1]
                 }
-            )
+            ); then
                 (( ZINIT[annex-multi-flag:pull-active] <= 1 && !OPTS[opt_-q,--quiet] )) && \
                     builtin print -r -- "  already up to date"
+            else
+                retval=$?
+            fi
         fi
         if [[ -n ${(v)ice[(I)(mv|cp|atpull|ps-on-update|cargo)]} || $+ice[sbin]$+ice[make]$+ice[extract]$+ice[configure] -ne 0 ]] {
             if (( !OPTS[opt_-q,--quiet] && ZINIT[annex-multi-flag:pull-active] == 1 )) {
@@ -3430,7 +3438,8 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
         return $?
     }
 
-    integer retval
+    integer retval n_updated n_uptodate
+    local -a failed_ids
 
     if (( OPTS[opt_-p,--parallel] )) && [[ $1 = update ]] {
         (( !OPTS[opt_-q,--quiet] )) && \
@@ -3525,19 +3534,35 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
             (( OPTS[opt_-q,--quiet] )) && builtin print -n .
             .zinit-update-or-status update "$user" "$plugin"
             update_rc=$?
-            [[ $update_rc -ne 0 ]] && {
-                +zi-log "🚧{warn}Warning: {pid}${user}/${plugin} {warn}update returned {obj}$update_rc"
-                retval=$?
+            if (( update_rc )) {
+                retval=$update_rc
+                failed_ids+=( $id_as )
+            } elif (( ZINIT[annex-multi-flag:pull-active] >= 2 )) {
+                n_updated+=1
+            } else {
+                n_uptodate+=1
             }
         fi
     done
 
     .zinit-compinit 1 1 &>/dev/null
-    if (( !OPTS[opt_-q,--quiet] )) {
-        +zi-log "{msg2}The update took {obj}${SECONDS}{msg2} seconds{rst}"
-    }
+    [[ $st = update ]] && .zinit-update-summary
 
     return "$retval"
+} # ]]]
+# FUNCTION: .zinit-update-summary [[[
+# Prints the summary line of `zinit update --all`.
+# Reads n_updated, n_uptodate, failed_ids and SECONDS from the caller.
+.zinit-update-summary() {
+    (( !OPTS[opt_-q,--quiet] || $#failed_ids )) || return 0
+    local -a parts
+    (( n_updated )) && parts+=( "$n_updated updated" )
+    (( n_uptodate )) && parts+=( "$n_uptodate up to date" )
+    (( $#failed_ids )) && parts+=( "$#failed_ids failed (${(j:, :)failed_ids})" )
+    integer total=$(( n_updated + n_uptodate + $#failed_ids ))
+    (( OPTS[opt_-q,--quiet] )) && builtin print
+    +zi-log "{m} Summary"
+    builtin print -r -- "$total plugin${${total:#1}:+s} in ${SECONDS}s${parts:+: ${(j:, :)parts}}"
 } # ]]]
 # FUNCTION: .zinit-update-or-status-snippet [[[
 #
@@ -3585,8 +3610,9 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
 .zinit-wait-for-update-jobs() {
     local tpe=$1
     if (( counter > OPTS[value] || main_counter == 0 )) {
-        wait ${(k)PUAssocArray}
-        local ind_file
+        # A multi-pid wait stops at the first job that exits non-zero.
+        local pid ind_file
+        for pid ( ${(k)PUAssocArray} ) { wait $pid }
         for ind_file ( ${^${(von)PUAssocArray}}.ind(DN.) ) {
             command cat ${ind_file:r}
             (( !OPTS[opt_-d,--debug] && !ZINIT[DEBUG_MODE] )) && \
