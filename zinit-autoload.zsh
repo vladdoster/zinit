@@ -3079,6 +3079,9 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
     .zinit-compute-ice "$user${${user:#(%|/)*}:+/}$plugin" "pack$nf" \
         ice local_dir filename is_snippet || return 1
 
+    # A commit hash in the ver ice pins the plugin. git pull cannot fetch a hash, so check it out.
+    local pin=${(M)ice[ver]:#[[:xdigit:]](#c7,40)}
+
     .zinit-any-to-user-plugin ${ice[teleid]:-$id_as}
     user=${reply[1]} plugin=${reply[2]}
 
@@ -3208,7 +3211,7 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
               local IFS=$'\n'
               # zsh backgrounds only the last pipeline of `a && b | c &`, so $! is stale after a failed fetch.
               if command git fetch --quiet; then
-                command git --no-pager log --color --date=short --pretty=format:'%Cgreen%cd %h %Creset%s%n' ..FETCH_HEAD | \
+                command git --no-pager log --color --date=short --pretty=format:'%Cgreen%cd %h %Creset%s%n' ..${pin:-FETCH_HEAD} | \
                 while read line; do
                   [[ -n ${line%%[[:space:]]##} ]] && {
                       [[ $had_output -eq 0 ]] && {
@@ -3219,7 +3222,7 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
                               } || builtin print
                               +zi-log "{i} Updating {happy}$id_as{rst}"
                           }
-                          builtin print -r -- "  $(command git rev-parse --short HEAD) -> $(command git rev-parse --short FETCH_HEAD)"
+                          builtin print -r -- "  $(command git rev-parse --short HEAD) -> $(command git rev-parse --short ${pin:-FETCH_HEAD})"
                       }
                       builtin print $line
                   }
@@ -3274,7 +3277,7 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
                       }
                   done
                   ICE=()
-                  (( ZINIT[annex-multi-flag:pull-active] >= 2 )) && command git pull --no-stat ${=ice[pullopts]:---ff-only} origin ${ice[ver]:-$main_branch} |& command grep -E -v '(FETCH_HEAD|up.to.date\.|From.*://|^Updating [0-9a-f]+\.\.[0-9a-f]+$|^Fast-forward$)'
+                  (( ZINIT[annex-multi-flag:pull-active] >= 2 )) && [[ -z $pin ]] && command git pull --no-stat ${=ice[pullopts]:---ff-only} origin ${ice[ver]:-$main_branch} |& command grep -E -v '(FETCH_HEAD|up.to.date\.|From.*://|^Updating [0-9a-f]+\.\.[0-9a-f]+$|^Fast-forward$)'
               }
               return ${ZINIT[annex-multi-flag:pull-active]}
             )
@@ -3282,7 +3285,12 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
         }
 
         if [[ -d $local_dir/.git ]]; then
-            if (
+            if [[ -n $pin ]] && (( ZINIT[annex-multi-flag:pull-active] >= 2 )); then
+                command git -C "$local_dir" checkout --quiet "$pin" || {
+                    ZINIT[annex-multi-flag:pull-active]=0
+                    retval=1
+                }
+            elif [[ -n $pin ]] || (
                 builtin cd -q "$local_dir" # || return 1 - don't return, maybe it's some hook's logic
                 if (( OPTS[opt_-q,--quiet] )) {
                     command git pull --recurse-submodules ${=ice[pullopts]:---ff-only} origin ${ice[ver]:-$main_branch} &> /dev/null
