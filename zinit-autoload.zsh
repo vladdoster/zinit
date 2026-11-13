@@ -1078,8 +1078,9 @@ ZINIT[EXTENDED_GLOB]=""
             () {
                 builtin emulate -LR zsh -o extendedglob ${=${options[xtrace]:#off}:+-o xtrace}
                 if { ! zcompile -Uz "$first" }; then
-                    +zi-log "{msg2}Warning:{rst} Compilation failed. Don't worry, the plugin will work also without compilation."
-                    +zi-log "{msg2}Warning:{rst} Consider submitting an error report to Zinit or to the plugin's author."
+                    +zi-log " [{ehi}failed{rst}]"
+                    +zi-log "{w} Compilation failed. Don't worry, the plugin will work also without compilation."
+                    +zi-log "{w} Consider submitting an error report to Zinit or to the plugin's author."
                 else
                     +zi-log " [{happy}OK{rst}]"
                 fi
@@ -3079,6 +3080,10 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
     .zinit-compute-ice "$user${${user:#(%|/)*}:+/}$plugin" "pack$nf" \
         ice local_dir filename is_snippet || return 1
 
+    # These ices have post-update hooks, which -u and run-atpull run without new commits.
+    integer has_hook_ices
+    [[ -n ${(v)ice[(I)(mv|cp|atpull|ps-on-update|cargo)]} || $+ice[sbin]$+ice[make]$+ice[extract]$+ice[configure]$+ice[reset] -ne 0 ]] && \
+        has_hook_ices=1
     # A commit hash in the ver ice pins the plugin. git pull cannot fetch a hash, so check it out.
     local pin=${(M)ice[ver]:#[[:xdigit:]](#c7,40)}
 
@@ -3160,7 +3165,7 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
 
         if (( 1 )) {
             if (( ZINIT[annex-multi-flag:pull-active] >= 1 )) {
-                if (( OPTS[opt_-q,--quiet] && !PUPDATE )) {
+                if (( OPTS[opt_-q,--quiet] && !PUPDATE && ( ZINIT[annex-multi-flag:pull-active] >= 2 || has_hook_ices ) )) {
                     (( ZINIT[first-plugin-mark] )) && {
                         ZINIT[first-plugin-mark]=0
                     } || builtin print
@@ -3246,7 +3251,7 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
                       ZINIT[annex-multi-flag:pull-active]=1
 
                       # Handle the snippet/plugin boundary in the messages
-                      if (( OPTS[opt_-q,--quiet] && !PUPDATE )) {
+                      if (( OPTS[opt_-q,--quiet] && !PUPDATE && has_hook_ices )) {
                           (( ZINIT[first-plugin-mark] )) && {
                               ZINIT[first-plugin-mark]=0
                           } || builtin print
@@ -3305,7 +3310,7 @@ print -- "\nAvailable ice-modifiers:\n\n${ice_order[*]}"
                 retval=$?
             fi
         fi
-        if [[ -n ${(v)ice[(I)(mv|cp|atpull|ps-on-update|cargo)]} || $+ice[sbin]$+ice[make]$+ice[extract]$+ice[configure] -ne 0 ]] {
+        if (( has_hook_ices )) {
             if (( !OPTS[opt_-q,--quiet] && ZINIT[annex-multi-flag:pull-active] == 1 )) {
                 if (( ${+ice[run-atpull]} )); then
                     +zi-log "{m} Running post-update hooks (run-atpull ice)"
