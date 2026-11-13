@@ -140,3 +140,29 @@
   run +zi-log -n '{m} message'
   assert $output contains 'message'; assert $state equals 0
 }
+
+@test 'snippet: -f downloads again, -x adds to PATH, a failed download exits non-zero' {
+  local srv="$zi_test_dir/srv3" port=$(python3 -c 'import socket;s=socket.socket();s.bind(("127.0.0.1",0));print(s.getsockname()[1])')
+  command mkdir -p $srv
+  builtin print -r '# v1' >| $srv/snip3.zsh
+  builtin print -r '#!/bin/sh' >| $srv/tool3
+  python3 -m http.server $port --bind 127.0.0.1 --directory $srv &>/dev/null &!
+  local srv_pid=$! base="http://127.0.0.1:$port"
+  local i; for i in {1..50}; do
+    if command curl -sf $base/snip3.zsh &>/dev/null; then break; fi
+    command sleep 0.1
+  done
+  run zinit snippet $base/snip3.zsh
+  assert $state equals 0
+  builtin print -r '# v2' >| $srv/snip3.zsh
+  run zinit snippet -f $base/snip3.zsh
+  assert $state equals 0
+  assert "$(<$(command find $ZINIT[SNIPPETS_DIR] -name snip3.zsh -type f | head -n1))" same_as '# v2'
+  snippet_path() { zinit snippet -x $base/tool3 &>/dev/null; builtin print -r -- "${(M)path:#*tool3*}" }
+  run snippet_path
+  assert $output contains 'tool3'
+  run zinit snippet $base/missing.zsh
+  kill $srv_pid 2>/dev/null
+  assert $state not_equal_to 0
+  assert "$(command find $ZINIT[SNIPPETS_DIR] -path '*missing*')" is_empty
+}

@@ -1154,7 +1154,12 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
             }
         }
 
-        (( retval == 4 )) && { command rmdir "$local_dir/$dirname" 2>/dev/null; return $retval; }
+        # rmdir removes only empty dirs. The parent of a first snippet from a host is empty too.
+        (( retval == 4 )) && {
+            command rmdir "$local_dir/$dirname" 2>/dev/null
+            [[ $local_dir != ${ZINIT[SNIPPETS_DIR]%/} ]] && command rmdir "$local_dir" 2>/dev/null
+            return $retval
+        }
 
         if [[ ${${:-$local_dir/$dirname}%%/##} != ${ZINIT[SNIPPETS_DIR]} ]] {
             # Store ices at "clone" and update of snippet, SVN and single-file

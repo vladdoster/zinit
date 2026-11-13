@@ -1512,7 +1512,9 @@ builtin setopt noaliases
         retval=$?
     }
 
-    (( ${+ICE[cloneonly]} || retval )) && return 0
+    # A failed download is not sourced, and the caller sees the failure.
+    (( retval )) && return $retval
+    (( ${+ICE[cloneonly]} )) && return 0
 
     ZINIT_SNIPPETS[$id_as]="$id_as <${${ICE[svn]+svn}:-single file}>"
 
