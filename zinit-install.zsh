@@ -380,7 +380,9 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
                         { local old_version="$(<$local_path/._zinit/is_release${count:#1})"; } 2>/dev/null
                         old_version=${old_version/(#b)(\/[^\/]##)(#c4,4)\/([^\/]##)*/${match[2]}}
                     }
-                    +zi-log "{m} Requesting ${REPLY:t} ${version:+, version $version} ${old_version:+ Current version: $old_version.}{rst}"
+                    [[ $count -eq 1 && -n $version && -n $old_version && $old_version != "$version" ]] && \
+                        builtin print -r -- "  $old_version -> $version"
+                    +zi-log "{m} Downloading {url}$url{rst}"
                     if { ! .zinit-download-file-stdout "$url" 0 1 >! "${REPLY:t}" } {
                         if { ! .zinit-download-file-stdout "$url" 1 1 >! "${REPLY:t}" } {
                             command rm -f "${REPLY:t}"
@@ -489,7 +491,7 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
                 [[ "$hook_rc" -ne 0 ]] && {
                     # note: this will effectively return the last != 0 rc
                     retval="$hook_rc"
-                    builtin print -Pr -- "${ZINIT[col-warn]}Warning:%f%b ${ZINIT[col-obj]}${arr[5]}${ZINIT[col-warn]} hook returned with ${ZINIT[col-obj]}${hook_rc}${ZINIT[col-rst]}"
+                    +zi-log "{w} {obj}${arr[5]}{rst} hook returned {obj}$hook_rc"
                 }
             done
 
@@ -505,7 +507,7 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
                 hook_rc=$?
                 [[ "$hook_rc" -ne 0 ]] && {
                     retval="$hook_rc"
-                    builtin print -Pr -- "${ZINIT[col-warn]}Warning:%f%b ${ZINIT[col-obj]}${arr[5]}${ZINIT[col-warn]} hook returned with ${ZINIT[col-obj]}${hook_rc}${ZINIT[col-rst]}"
+                    +zi-log "{w} {obj}${arr[5]}{rst} hook returned {obj}$hook_rc"
                 }
             done
         }
@@ -904,7 +906,7 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
 
     if [[ $update = -u && ${OPTS[opt_-q,--quiet]} != 1 ]]; then
         local id_msg_part="{…} (identified as{ehi}:{rst} {id-as}$id_as{rst})"
-        +zi-log "{nl}{info2}Updating snippet: {url}$sname{rst}${ICE[id-as]:+$id_msg_part}"
+        +zi-log "{i} Updating snippet {happy}$sname{rst}${ICE[id-as]:+$id_msg_part}"
     fi
 
     # A flag for the annexes. 0 – no new commits, 1 - run-atpull mode,
@@ -950,7 +952,7 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
                             hook_rc=$?
                             [[ "$hook_rc" -ne 0 ]] && {
                                 retval="$hook_rc"
-                                builtin print -Pr -- "${ZINIT[col-warn]}Warning:%f%b ${ZINIT[col-obj]}${arr[5]}${ZINIT[col-warn]} hook returned with ${ZINIT[col-obj]}${hook_rc}${ZINIT[col-rst]}"
+                                +zi-log "{w} {obj}${arr[5]}{rst} hook returned {obj}$hook_rc"
                             }
                         done
 
@@ -960,8 +962,8 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
                             # the messages on an actual update
                             if (( OPTS[opt_-q,--quiet] )); then
                                 local id_msg_part="{…} (identified as{ehi}: {id-as}$id_as{rst})"
-                                +zi-log "{nl}{info2}Updating snippet {url}${sname}{rst}${ICE[id-as]:+$id_msg_part}"
-                                +zi-log "Downloading {apo}\`{rst}$sname{apo}\`{rst} (with Subversion){…}"
+                                +zi-log "{i} Updating snippet {happy}${sname}{rst}${ICE[id-as]:+$id_msg_part}"
+                                +zi-log "{m} Downloading {url}$sname{rst} with Subversion"
                             fi
                             .zinit-mirror-using-svn "$url" "-u" "$dirname" || return 4
                         }
@@ -1015,7 +1017,7 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
                     local -a matched
                     matched=( $local_dir/$dirname/$filename(DNms-$secs) )
                     if (( ${#matched} )) {
-                        +zi-log "{info}Already up to date.{rst}"
+                        builtin print -r -- "  already up to date"
                         # Empty-update return-short path – it also decides the
                         # pull-active flag after the return from this sub-shell
                         (( ${+ICE[run-atpull]} || OPTS[opt_-u,--urge] )) && skip_dl=1 || return 0
@@ -1044,7 +1046,7 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
                             hook_rc="$?"
                             [[ "$hook_rc" -ne 0 ]] && {
                                 retval="$hook_rc"
-                                builtin print -Pr -- "${ZINIT[col-warn]}Warning:%f%b ${ZINIT[col-obj]}${arr[5]}${ZINIT[col-warn]} hook returned with ${ZINIT[col-obj]}${hook_rc}${ZINIT[col-rst]}"
+                                +zi-log "{w} {obj}${arr[5]}{rst} hook returned {obj}$hook_rc"
                             }
                         done
                     }
