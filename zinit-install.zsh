@@ -897,8 +897,9 @@ builtin source "${ZINIT[BIN_DIR]}/zinit-side.zsh" || {
 
     if [[ ! -d $local_dir/$dirname ]]; then
         local id_msg_part="{…} (at label{ehi}:{rst} {id-as}$id_as{rst})"
-        [[ $update != -u ]] && +zi-log "{nl}{info}Setting up snippet:" \
-                                    "{url}$sname{rst}${ICE[id-as]:+$id_msg_part}"
+        local verb=Downloading
+        [[ $url != (ftp(|s)|http(|s)|scp)://* ]] && verb=Installing
+        [[ $update != -u ]] && +zi-log "{nl}{i} $verb snippet {b}{file}$sname{rst}${ICE[id-as]:+$id_msg_part}"
         command mkdir -p "$local_dir"
     fi
 
